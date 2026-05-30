@@ -4,6 +4,7 @@ using UnityEngine;
 public class BatAttack : MonoBehaviour
 {
     public Transform bat;
+    public GameObject hitParticlePrefab;
 
     public float attackRange = 2.2f;
     public float attackOffset = 1.2f;
@@ -97,6 +98,15 @@ public class BatAttack : MonoBehaviour
             if (receiver != null)
             {
                 receiver.Knockback(force);
+                
+                if (hitParticlePrefab != null)
+                {
+                    Instantiate(
+                        hitParticlePrefab,
+                        hit.transform.position + Vector3.up,
+                        Quaternion.identity
+                    );
+                }
             }
             else
             {

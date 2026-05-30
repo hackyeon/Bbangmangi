@@ -13,7 +13,24 @@ public class PlayerAttackInput : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            batAttack.Attack();
+            AttackByCurrentForward();
         }
+    }
+
+    public void Attack(Vector2 direction)
+    {
+        if (direction == Vector2.zero)
+            return;
+
+        Vector3 attackDir = new Vector3(direction.x, 0, direction.y);
+
+        transform.forward = attackDir.normalized;
+
+        batAttack.Attack();
+    }
+
+    private void AttackByCurrentForward()
+    {
+        batAttack.Attack();
     }
 }
