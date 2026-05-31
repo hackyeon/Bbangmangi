@@ -58,14 +58,6 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         if (input.AttackPressed)
         {
-            Vector2 attackInput = input.AttackDirection;
-
-            if (attackInput.sqrMagnitude > 0.001f)
-            {
-                Vector3 attackDir = new Vector3(attackInput.x, 0, attackInput.y);
-                transform.forward = attackDir.normalized;
-            }
-
             batAttack.Attack();
         }
         
