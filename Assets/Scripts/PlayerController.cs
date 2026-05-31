@@ -33,9 +33,9 @@ public class PlayerController : MonoBehaviour
 
         Vector3 move = new Vector3(x, 0, z);
 
-        rb.velocity = new Vector3(
+        rb.linearVelocity = new Vector3(
             move.x * moveSpeed,
-            rb.velocity.y,
+            rb.linearVelocity.y,
             move.z * moveSpeed
         );
 

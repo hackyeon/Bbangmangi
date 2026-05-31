@@ -28,15 +28,15 @@ public class EnemyAI : MonoBehaviour
 
         if (dir.magnitude <= stopDistance)
         {
-            rb.velocity = new Vector3(0, rb.velocity.y, 0);
+            rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
             return;
         }
 
         Vector3 move = dir.normalized * moveSpeed;
 
-        rb.velocity = new Vector3(
+        rb.linearVelocity = new Vector3(
             move.x,
-            rb.velocity.y,
+            rb.linearVelocity.y,
             move.z
         );
 
