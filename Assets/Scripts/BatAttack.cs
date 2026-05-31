@@ -1,7 +1,8 @@
 using System.Collections;
 using UnityEngine;
+using Fusion;
 
-public class BatAttack : MonoBehaviour
+public class BatAttack : NetworkBehaviour
 {
     public Transform bat;
     public GameObject hitParticlePrefab;
@@ -97,7 +98,7 @@ public class BatAttack : MonoBehaviour
 
             if (receiver != null)
             {
-                receiver.Knockback(force);
+                receiver.Knockback(force, Object.InputAuthority);
                 
                 if (hitParticlePrefab != null)
                 {

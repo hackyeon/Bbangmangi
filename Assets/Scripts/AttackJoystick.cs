@@ -9,7 +9,8 @@ public class AttackJoystick : MonoBehaviour, IDragHandler, IPointerDownHandler, 
     public Vector2 Direction { get; private set; }
 
     private RectTransform rectTransform;
-    private PlayerAttackInput playerAttackInput;
+    private bool hasAttack;
+    private Vector2 pendingAttackDirection;
 
     void Start()
     {
@@ -20,8 +21,18 @@ public class AttackJoystick : MonoBehaviour, IDragHandler, IPointerDownHandler, 
             handle.gameObject.SetActive(true);
             handle.anchoredPosition = Vector2.zero;
         }
+    }
+    
+    public bool ConsumeAttack(out Vector2 direction)
+    {
+        direction = pendingAttackDirection;
 
-        playerAttackInput = FindObjectOfType<PlayerAttackInput>();
+        if (!hasAttack)
+            return false;
+
+        hasAttack = false;
+        pendingAttackDirection = Vector2.zero;
+        return true;
     }
 
     public void OnPointerDown(PointerEventData eventData)
@@ -48,12 +59,15 @@ public class AttackJoystick : MonoBehaviour, IDragHandler, IPointerDownHandler, 
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        if (Direction != Vector2.zero && playerAttackInput != null)
+        if (Direction != Vector2.zero)
         {
-            playerAttackInput.Attack(Direction);
+            pendingAttackDirection = Direction;
+            hasAttack = true;
         }
 
-        handle.anchoredPosition = Vector2.zero;
+        if (handle != null)
+            handle.anchoredPosition = Vector2.zero;
+
         Direction = Vector2.zero;
     }
 }

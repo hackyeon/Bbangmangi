@@ -1,11 +1,15 @@
 using System.Collections;
+using Fusion;
 using UnityEngine;
 
-public class KnockbackReceiver : MonoBehaviour
+public class KnockbackReceiver : NetworkBehaviour
 {
     public float stunDuration = 0.4f;
     public bool isPlayer;
+
     public bool IsStunned { get; private set; }
+
+    public PlayerRef LastAttacker { get; private set; }
 
     private Rigidbody rb;
     private HitFlash hitFlash;
@@ -16,15 +20,17 @@ public class KnockbackReceiver : MonoBehaviour
         hitFlash = GetComponent<HitFlash>();
     }
 
-    public void Knockback(Vector3 force)
+    public void Knockback(Vector3 force, PlayerRef attacker)
     {
+        LastAttacker = attacker;
+
         if (isPlayer)
         {
             CameraShake.Instance?.Shake();
         }
-        
+
         hitFlash?.Flash();
-        
+
         StartCoroutine(KnockbackRoutine(force));
     }
 
@@ -39,5 +45,10 @@ public class KnockbackReceiver : MonoBehaviour
         yield return new WaitForSeconds(stunDuration);
 
         IsStunned = false;
+    }
+
+    public void ClearLastAttacker()
+    {
+        LastAttacker = PlayerRef.None;
     }
 }

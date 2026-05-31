@@ -12,15 +12,15 @@ GameObject:
   - component: {fileID: 2244708393782830561}
   - component: {fileID: 7664289855568250287}
   - component: {fileID: 1277396379163867782}
-  - component: {fileID: 3137317378806709931}
   - component: {fileID: 7484218051735024733}
   - component: {fileID: 6898013860451683829}
-  - component: {fileID: 208305473128831268}
-  - component: {fileID: 7526962673027158645}
   - component: {fileID: 5281537526443912785}
   - component: {fileID: 145411463653121019}
   - component: {fileID: -3098761820489824526}
   - component: {fileID: -1695958275435248212}
+  - component: {fileID: -1342913374162665895}
+  - component: {fileID: 2726466813643713992}
+  - component: {fileID: 2577122104268397432}
   m_Layer: 0
   m_Name: NetworkPlayer
   m_TagString: Untagged
@@ -124,20 +124,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3137317378806709931
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2441481751626903824}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 09c7d0b527a4040b1bb122f16f6afecd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  moveSpeed: 5
-  joystick: {fileID: 0}
 --- !u!54 &7484218051735024733
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -147,7 +133,7 @@ Rigidbody:
   m_GameObject: {fileID: 2441481751626903824}
   serializedVersion: 5
   m_Mass: 1
-  m_LinearDamping: 1
+  m_LinearDamping: 0.5
   m_AngularDamping: 5
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
@@ -160,9 +146,9 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 1
   m_Constraints: 80
   m_CollisionDetection: 0
 --- !u!114 &6898013860451683829
@@ -185,33 +171,6 @@ MonoBehaviour:
   knockbackPower: 35
   upwardPower: 3
   attackDuration: 0.12
---- !u!114 &208305473128831268
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2441481751626903824}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 516c94c002c924ce5b3f44cad951c589, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  respawnPosition: {x: 0, y: 3, z: 0}
-  fallY: -5
-  isPlayer: 1
---- !u!114 &7526962673027158645
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2441481751626903824}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 145f4ffe1f68c49e3a70e31d5d3a8ee4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &5281537526443912785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -257,8 +216,12 @@ MonoBehaviour:
   Flags: 262145
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 3137317378806709931}
+  - {fileID: 6898013860451683829}
+  - {fileID: 5281537526443912785}
   - {fileID: -1695958275435248212}
+  - {fileID: -1342913374162665895}
+  - {fileID: 2726466813643713992}
+  - {fileID: 2577122104268397432}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &-1695958275435248212
 MonoBehaviour:
@@ -277,6 +240,52 @@ MonoBehaviour:
   SyncParent: 0
   _autoAOIOverride: 1
   DisableSharedModeInterpolation: 0
+--- !u!114 &-1342913374162665895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2441481751626903824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b40134b9bc9754d00a558b12b7d6b6ad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerScore
+  _KillCount: 0
+--- !u!114 &2726466813643713992
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2441481751626903824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b86d8fb85797c4cc9a50dae2f5b669b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkFallDetector
+  respawnPosition: {x: 0, y: 5, z: 0}
+  fallY: -5
+--- !u!114 &2577122104268397432
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2441481751626903824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 451eb915f71744ab4a1366474d2f7cdf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerMotor
+  moveSpeed: 6
+  gravity: -25
+  verticalVelocity: 0
+  groundCheckDistance: 1.2
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 8
 --- !u!1 &4206279411774153450
 GameObject:
   m_ObjectHideFlags: 0
