@@ -1,6 +1,7 @@
 using UnityEngine;
+using Fusion;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     public float moveSpeed = 5f;
     public MobileJoystick joystick;
@@ -16,8 +17,10 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (knockbackReceiver != null &&
-            knockbackReceiver.IsStunned)
+        if (!HasInputAuthority)
+            return;
+        
+        if (knockbackReceiver != null && knockbackReceiver.IsStunned)
         {
             return;
         }

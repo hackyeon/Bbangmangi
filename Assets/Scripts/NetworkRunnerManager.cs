@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class NetworkRunnerManager : MonoBehaviour
 {
+    public NetworkObject playerPrefab;
+
     private NetworkRunner runner;
 
     async void Start()
@@ -12,30 +14,41 @@ public class NetworkRunnerManager : MonoBehaviour
 
         Debug.Log("[Bbangmangi] StartGame 시작");
 
-        try
+        var result = await runner.StartGame(
+            new StartGameArgs()
+            {
+                GameMode = GameMode.AutoHostOrClient,
+                SessionName = "BbangmangiRoom",
+                SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
+            });
+
+        if (result.Ok)
         {
-            var result = await runner.StartGame(
-                new StartGameArgs()
-                {
-                    GameMode = GameMode.AutoHostOrClient,
-                    SessionName = "BbangmangiRoom",
-                    SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
-                });
+            Debug.Log("[Bbangmangi] 연결 성공");
 
-            Debug.Log($"[Bbangmangi] Result OK = {result.Ok}");
-
-            if (result.Ok)
-            {
-                Debug.Log("[Bbangmangi] 연결 성공");
-            }
-            else
-            {
-                Debug.LogError($"[Bbangmangi] 실패 : {result.ShutdownReason}");
-            }
+            SpawnPlayer();
         }
-        catch (System.Exception e)
+        else
         {
-            Debug.LogError(e);
+            Debug.LogError($"[Bbangmangi] 연결 실패: {result.ShutdownReason}");
+        }
+    }
+
+    private void SpawnPlayer()
+    {
+        Vector3 spawnPos = new Vector3(0, 5, 0);
+
+        NetworkObject playerObject = runner.Spawn(
+            playerPrefab,
+            spawnPos,
+            Quaternion.identity,
+            runner.LocalPlayer
+        );
+
+        CameraFollow cameraFollow = Camera.main.GetComponent<CameraFollow>();
+        if (cameraFollow != null)
+        {
+            cameraFollow.target = playerObject.transform;
         }
     }
 }
