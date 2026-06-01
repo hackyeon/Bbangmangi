@@ -29,10 +29,14 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        if (!GetInput(out BbangmangiInputData input))
-            return;
+        Vector2 moveInput = Vector2.zero;
+        bool attackPressed = false;
 
-        Vector2 moveInput = input.MoveDirection;
+        if (GetInput(out BbangmangiInputData input))
+        {
+            moveInput = input.MoveDirection;
+            attackPressed = input.AttackPressed;
+        }
 
         if (moveInput.sqrMagnitude > 1f)
             moveInput.Normalize();
@@ -59,7 +63,7 @@ public class NetworkPlayerMotor : NetworkBehaviour
         if (move.sqrMagnitude > 0.001f)
             transform.forward = move;
 
-        if (input.AttackPressed && batAttack != null)
+        if (attackPressed && batAttack != null)
             batAttack.Attack();
     }
     

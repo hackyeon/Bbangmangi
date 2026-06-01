@@ -10,7 +10,7 @@ public class BatAttack : NetworkBehaviour
     public float attackOffset = 1.2f;
     public float knockbackPower = 12f;
     public float upwardPower = 4f;
-    public float attackDuration = 0.12f;
+    public float attackDuration = 0.09f;
 
     public GameObject hitParticlePrefab;
 
@@ -40,7 +40,7 @@ public class BatAttack : NetworkBehaviour
 
             bat.localRotation = Quaternion.Slerp(startRot, endRot, t);
 
-            if (!didHit && t >= 0.45f)
+            if (!didHit && t >= 0.15f)
             {
                 Hit();
                 didHit = true;

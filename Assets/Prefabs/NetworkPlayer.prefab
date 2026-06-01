@@ -140,7 +140,7 @@ MonoBehaviour:
   attackOffset: 1.2
   knockbackPower: 26
   upwardPower: 16
-  attackDuration: 0.12
+  attackDuration: 0.09
   hitParticlePrefab: {fileID: 7621689758022169815, guid: 3a9c517123ad9447b848ae2feb62c284,
     type: 3}
 --- !u!114 &5281537526443912785
@@ -157,7 +157,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   stunDuration: 0.55
   damping: 3
-  isPlayer: 1
 --- !u!114 &145411463653121019
 MonoBehaviour:
   m_ObjectHideFlags: 0
