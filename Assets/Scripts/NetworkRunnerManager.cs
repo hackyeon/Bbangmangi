@@ -11,9 +11,11 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 
     private NetworkRunner runner;
     private readonly Dictionary<PlayerRef, NetworkObject> spawnedPlayers = new();
-
+    private CharacterSelectUI characterSelectUI;
+    
     async void Start()
     {
+        characterSelectUI = FindFirstObjectByType<CharacterSelectUI>();
         runner = gameObject.AddComponent<NetworkRunner>();
         runner.ProvideInput = true;
         runner.AddCallbacks(this);
@@ -21,7 +23,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         var result = await runner.StartGame(
             new StartGameArgs()
             {
-                GameMode = GameMode.AutoHostOrClient,
+                GameMode = GameMode.Shared,
                 SessionName = "BbangmangiRoom",
                 SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
             });
@@ -29,6 +31,56 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         if (result.Ok)
         {
             Debug.Log("Fusion 연결 성공");
+            if (characterSelectUI != null)
+                characterSelectUI.SetStartButtonEnabled(true);
+        }
+        else
+        {
+            Debug.LogError($"Fusion 연결 실패: {result.ShutdownReason}");
+        }
+    }
+
+    public void RequestSpawn(string nickname)
+    {
+        if (runner == null || !runner.IsRunning)
+        {
+            Debug.LogError("Runner is not ready");
+            return;
+        }
+
+        Debug.Log($"RequestSpawn: {nickname}");
+
+        SpawnPlayer(runner.LocalPlayer, nickname);
+    }
+
+    private void SpawnPlayer(PlayerRef player, string nickname)
+    {
+        if (spawnedPlayers.ContainsKey(player))
+            return;
+
+        NetworkObject playerObject = runner.Spawn(
+            playerPrefab,
+            new Vector3(0, 5, 0),
+            Quaternion.identity,
+            player
+        );
+
+        spawnedPlayers[player] = playerObject;
+    }
+
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    {
+        Debug.Log($"Player Joined: {player.PlayerId}");
+    }
+
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+    {
+        if (spawnedPlayers.TryGetValue(player, out NetworkObject playerObject))
+        {
+            if (playerObject != null)
+                runner.Despawn(playerObject);
+
+            spawnedPlayers.Remove(player);
         }
     }
 
@@ -59,7 +111,6 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 #if UNITY_EDITOR
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            data.AttackDirection = move == Vector2.zero ? Vector2.up : move;
             data.AttackPressed = true;
         }
 #endif
@@ -67,40 +118,6 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         input.Set(data);
     }
 
-    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
-    {
-        if (!runner.IsServer)
-            return;
-
-        if (spawnedPlayers.ContainsKey(player))
-            return;
-
-        Vector3 spawnPosition = new Vector3(0, 5, 0);
-
-        NetworkObject playerObject = runner.Spawn(
-            playerPrefab,
-            spawnPosition,
-            Quaternion.identity,
-            player
-        );
-
-        spawnedPlayers.Add(player, playerObject);
-    }
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
-    {
-        if (!runner.IsServer)
-            return;
-
-        if (spawnedPlayers.TryGetValue(player, out NetworkObject playerObject))
-        {
-            if (playerObject != null)
-            {
-                runner.Despawn(playerObject);
-            }
-
-            spawnedPlayers.Remove(player);
-        }
-    }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }

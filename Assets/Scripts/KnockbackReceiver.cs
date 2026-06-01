@@ -5,7 +5,6 @@ public class KnockbackReceiver : NetworkBehaviour
 {
     public float stunDuration = 0.55f;
     public float damping = 3f;
-    public bool isPlayer;
 
     public bool IsStunned { get; private set; }
     public PlayerRef LastAttacker { get; private set; }
@@ -19,7 +18,13 @@ public class KnockbackReceiver : NetworkBehaviour
         hitFlash = GetComponent<HitFlash>();
     }
 
-    public void Knockback(Vector3 velocity, PlayerRef attacker)
+    public void RequestKnockback(Vector3 velocity, PlayerRef attacker)
+    {
+        RPC_ApplyKnockback(velocity, attacker);
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.InputAuthority)]
+    private void RPC_ApplyKnockback(Vector3 velocity, PlayerRef attacker)
     {
         LastAttacker = attacker;
         knockbackVelocity = velocity;
@@ -35,13 +40,9 @@ public class KnockbackReceiver : NetworkBehaviour
     public Vector3 ConsumeVelocity(float deltaTime)
     {
         if (stunTimer > 0f)
-        {
             stunTimer -= deltaTime;
-        }
         else
-        {
             IsStunned = false;
-        }
 
         Vector3 result = knockbackVelocity;
 

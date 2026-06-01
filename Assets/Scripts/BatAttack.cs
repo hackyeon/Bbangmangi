@@ -96,7 +96,7 @@ public class BatAttack : NetworkBehaviour
                 dir * knockbackPower +
                 Vector3.up * upwardPower;
 
-            receiver.Knockback(velocity, Object.InputAuthority);
+            receiver.RequestKnockback(velocity, Object.InputAuthority);
 
             if (hitParticlePrefab != null)
             {
