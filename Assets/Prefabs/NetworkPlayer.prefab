@@ -12,15 +12,14 @@ GameObject:
   - component: {fileID: 2244708393782830561}
   - component: {fileID: 7664289855568250287}
   - component: {fileID: 1277396379163867782}
-  - component: {fileID: 7484218051735024733}
   - component: {fileID: 6898013860451683829}
   - component: {fileID: 5281537526443912785}
   - component: {fileID: 145411463653121019}
   - component: {fileID: -3098761820489824526}
-  - component: {fileID: -1695958275435248212}
   - component: {fileID: -1342913374162665895}
   - component: {fileID: 2726466813643713992}
   - component: {fileID: 2577122104268397432}
+  - component: {fileID: 5336119312162996882}
   m_Layer: 0
   m_Name: NetworkPlayer
   m_TagString: Untagged
@@ -124,33 +123,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!54 &7484218051735024733
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2441481751626903824}
-  serializedVersion: 5
-  m_Mass: 1
-  m_LinearDamping: 0.5
-  m_AngularDamping: 5
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 0
-  m_IsKinematic: 1
-  m_Interpolate: 1
-  m_Constraints: 80
-  m_CollisionDetection: 0
 --- !u!114 &6898013860451683829
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -164,13 +136,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   bat: {fileID: 8224577593454855042}
-  hitParticlePrefab: {fileID: 7621689758022169815, guid: 3a9c517123ad9447b848ae2feb62c284,
-    type: 3}
   attackRange: 2.2
   attackOffset: 1.2
-  knockbackPower: 35
-  upwardPower: 3
+  knockbackPower: 12
+  upwardPower: 4
   attackDuration: 0.12
+  hitParticlePrefab: {fileID: 7621689758022169815, guid: 3a9c517123ad9447b848ae2feb62c284,
+    type: 3}
 --- !u!114 &5281537526443912785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -183,7 +155,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a27a4ccad8de644c393fefae4be9a8f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 0.4
+  stunDuration: 0.35
+  damping: 8
   isPlayer: 1
 --- !u!114 &145411463653121019
 MonoBehaviour:
@@ -218,28 +191,11 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 6898013860451683829}
   - {fileID: 5281537526443912785}
-  - {fileID: -1695958275435248212}
   - {fileID: -1342913374162665895}
   - {fileID: 2726466813643713992}
   - {fileID: 2577122104268397432}
+  - {fileID: 5336119312162996882}
   ForceRemoteRenderTimeframe: 0
---- !u!114 &-1695958275435248212
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2441481751626903824}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkTransform
-  _stateAuthorityChangeErrorCorrectionDelta: 0
-  SyncScale: 0
-  SyncParent: 0
-  _autoAOIOverride: 1
-  DisableSharedModeInterpolation: 0
 --- !u!114 &-1342913374162665895
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -281,11 +237,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerMotor
   moveSpeed: 6
   gravity: -25
-  verticalVelocity: 0
   groundCheckDistance: 1.2
+  capsuleHalfHeight: 1
   groundLayer:
     serializedVersion: 2
     m_Bits: 8
+--- !u!114 &5336119312162996882
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2441481751626903824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkTransform
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &4206279411774153450
 GameObject:
   m_ObjectHideFlags: 0

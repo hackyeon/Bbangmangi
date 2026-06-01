@@ -50,9 +50,8 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 
         data.MoveDirection = move;
 
-        if (attackJoystick != null && attackJoystick.ConsumeAttack(out Vector2 attackDir))
+        if (attackJoystick != null && attackJoystick.ConsumeAttack())
         {
-            data.AttackDirection = attackDir;
             data.AttackPressed = true;
         }
 

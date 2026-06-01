@@ -1,18 +1,18 @@
 using System.Collections;
-using UnityEngine;
 using Fusion;
+using UnityEngine;
 
 public class BatAttack : NetworkBehaviour
 {
     public Transform bat;
-    public GameObject hitParticlePrefab;
 
     public float attackRange = 2.2f;
     public float attackOffset = 1.2f;
-    public float knockbackPower = 35f;
-    public float upwardPower = 3f;
-
+    public float knockbackPower = 12f;
+    public float upwardPower = 4f;
     public float attackDuration = 0.12f;
+
+    public GameObject hitParticlePrefab;
 
     private bool isAttacking;
 
@@ -24,14 +24,14 @@ public class BatAttack : NetworkBehaviour
         StartCoroutine(AttackRoutine());
     }
 
-    IEnumerator AttackRoutine()
+    private IEnumerator AttackRoutine()
     {
         isAttacking = true;
 
         Quaternion startRot = bat.localRotation;
-        Quaternion endRot = startRot * Quaternion.Euler(0, 0, -120);
+        Quaternion endRot = startRot * Quaternion.Euler(0f, 0f, -120f);
 
-        float time = 0;
+        float time = 0f;
         bool didHit = false;
 
         while (time < attackDuration)
@@ -50,7 +50,7 @@ public class BatAttack : NetworkBehaviour
             yield return null;
         }
 
-        time = 0;
+        time = 0f;
 
         while (time < attackDuration)
         {
@@ -66,7 +66,7 @@ public class BatAttack : NetworkBehaviour
         isAttacking = false;
     }
 
-    void Hit()
+    private void Hit()
     {
         Vector3 attackPoint =
             transform.position + transform.forward * attackOffset;
@@ -78,49 +78,38 @@ public class BatAttack : NetworkBehaviour
 
         foreach (Collider hit in hits)
         {
-            if (hit.gameObject == gameObject)
+            KnockbackReceiver receiver =
+                hit.GetComponentInParent<KnockbackReceiver>();
+
+            if (receiver == null || receiver.gameObject == gameObject)
                 continue;
 
-            Rigidbody rb = hit.GetComponent<Rigidbody>();
+            Vector3 dir = receiver.transform.position - transform.position;
+            dir.y = 0f;
 
-            if (rb == null)
-                continue;
+            if (dir.sqrMagnitude < 0.001f)
+                dir = transform.forward;
 
-            Vector3 dir = hit.transform.position - transform.position;
-            dir.y = 0;
             dir.Normalize();
 
-            Vector3 force =
-                dir * knockbackPower + Vector3.up * upwardPower;
+            Vector3 velocity =
+                dir * knockbackPower +
+                Vector3.up * upwardPower;
 
-            KnockbackReceiver receiver =
-                hit.GetComponent<KnockbackReceiver>();
+            receiver.Knockback(velocity, Object.InputAuthority);
 
-            if (receiver != null)
+            if (hitParticlePrefab != null)
             {
-                receiver.Knockback(force, Object.InputAuthority);
-                
-                if (hitParticlePrefab != null)
-                {
-                    Instantiate(
-                        hitParticlePrefab,
-                        hit.transform.position + Vector3.up,
-                        Quaternion.identity
-                    );
-                }
+                Instantiate(
+                    hitParticlePrefab,
+                    receiver.transform.position + Vector3.up,
+                    Quaternion.identity
+                );
             }
-            else
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-                rb.AddForce(force, ForceMode.Impulse);
-            }
-
-            Debug.Log($"Hit: {hit.gameObject.name}");
         }
     }
 
-    void OnDrawGizmos()
+    private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
 

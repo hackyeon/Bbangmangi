@@ -1,50 +1,57 @@
-using System.Collections;
 using Fusion;
 using UnityEngine;
 
 public class KnockbackReceiver : NetworkBehaviour
 {
-    public float stunDuration = 0.4f;
+    public float stunDuration = 0.35f;
+    public float damping = 8f;
     public bool isPlayer;
 
     public bool IsStunned { get; private set; }
-
     public PlayerRef LastAttacker { get; private set; }
 
-    private Rigidbody rb;
+    private Vector3 knockbackVelocity;
+    private float stunTimer;
     private HitFlash hitFlash;
 
-    void Start()
+    public override void Spawned()
     {
-        rb = GetComponent<Rigidbody>();
         hitFlash = GetComponent<HitFlash>();
     }
 
-    public void Knockback(Vector3 force, PlayerRef attacker)
+    public void Knockback(Vector3 velocity, PlayerRef attacker)
     {
         LastAttacker = attacker;
-
-        if (isPlayer)
-        {
-            CameraShake.Instance?.Shake();
-        }
-
-        hitFlash?.Flash();
-
-        StartCoroutine(KnockbackRoutine(force));
-    }
-
-    private IEnumerator KnockbackRoutine(Vector3 force)
-    {
+        knockbackVelocity = velocity;
+        stunTimer = stunDuration;
         IsStunned = true;
 
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-        rb.AddForce(force, ForceMode.Impulse);
+        if (isPlayer)
+            CameraShake.Instance?.Shake();
 
-        yield return new WaitForSeconds(stunDuration);
+        hitFlash?.Flash();
+    }
 
-        IsStunned = false;
+    public Vector3 ConsumeVelocity(float deltaTime)
+    {
+        if (stunTimer > 0f)
+        {
+            stunTimer -= deltaTime;
+        }
+        else
+        {
+            IsStunned = false;
+        }
+
+        Vector3 result = knockbackVelocity;
+
+        knockbackVelocity = Vector3.Lerp(
+            knockbackVelocity,
+            Vector3.zero,
+            damping * deltaTime
+        );
+
+        return result;
     }
 
     public void ClearLastAttacker()

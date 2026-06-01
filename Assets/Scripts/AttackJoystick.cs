@@ -1,14 +1,12 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class AttackJoystick : MonoBehaviour, IPointerDownHandler
+public class AttackJoystick : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
     private bool hasAttack;
 
-    public bool ConsumeAttack(out Vector2 direction)
+    public bool ConsumeAttack()
     {
-        direction = Vector2.zero;
-
         if (!hasAttack)
             return false;
 
@@ -19,5 +17,10 @@ public class AttackJoystick : MonoBehaviour, IPointerDownHandler
     public void OnPointerDown(PointerEventData eventData)
     {
         hasAttack = true;
+        Debug.Log("Attack Button Down");
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
     }
 }
