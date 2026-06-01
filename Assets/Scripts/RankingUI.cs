@@ -10,11 +10,32 @@ public class RankingUI : MonoBehaviour
 
     private void Update()
     {
+        if (rankingText == null)
+            return;
+
         NetworkPlayerScore[] players =
-            FindObjectsOfType<NetworkPlayerScore>();
+            FindObjectsByType<NetworkPlayerScore>(
+                FindObjectsSortMode.None
+            );
+
+        List<NetworkPlayerScore> validPlayers = new();
+
+        foreach (NetworkPlayerScore player in players)
+        {
+            if (player == null)
+                continue;
+
+            if (player.Object == null)
+                continue;
+
+            if (!player.Object.IsValid)
+                continue;
+
+            validPlayers.Add(player);
+        }
 
         List<NetworkPlayerScore> ranking =
-            players
+            validPlayers
                 .OrderByDescending(player => player.KillCount)
                 .ToList();
 

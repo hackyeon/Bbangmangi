@@ -138,8 +138,8 @@ MonoBehaviour:
   bat: {fileID: 8224577593454855042}
   attackRange: 2.2
   attackOffset: 1.2
-  knockbackPower: 12
-  upwardPower: 4
+  knockbackPower: 26
+  upwardPower: 16
   attackDuration: 0.12
   hitParticlePrefab: {fileID: 7621689758022169815, guid: 3a9c517123ad9447b848ae2feb62c284,
     type: 3}
@@ -155,8 +155,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a27a4ccad8de644c393fefae4be9a8f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stunDuration: 0.35
-  damping: 8
+  stunDuration: 0.55
+  damping: 3
   isPlayer: 1
 --- !u!114 &145411463653121019
 MonoBehaviour:
@@ -208,7 +208,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b40134b9bc9754d00a558b12b7d6b6ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerScore
-  _KillCount: 0
 --- !u!114 &2726466813643713992
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -239,6 +238,7 @@ MonoBehaviour:
   gravity: -25
   groundCheckDistance: 1.2
   capsuleHalfHeight: 1
+  playerRadius: 0.6
   groundLayer:
     serializedVersion: 2
     m_Bits: 8

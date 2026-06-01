@@ -7,6 +7,7 @@ public class NetworkPlayerMotor : NetworkBehaviour
     public float gravity = -25f;
     public float groundCheckDistance = 1.2f;
     public float capsuleHalfHeight = 1f;
+    public float playerRadius = 0.5f;
     public LayerMask groundLayer;
 
     private float verticalVelocity;
@@ -53,11 +54,60 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         GroundCheck();
 
+        ResolvePlayerOverlap();
+        
         if (move.sqrMagnitude > 0.001f)
             transform.forward = move;
 
         if (input.AttackPressed && batAttack != null)
             batAttack.Attack();
+    }
+    
+    private void ResolvePlayerOverlap()
+    {
+        Collider[] hits =
+            Physics.OverlapSphere(
+                transform.position,
+                playerRadius
+            );
+
+        foreach (Collider hit in hits)
+        {
+            if (hit.gameObject == gameObject)
+                continue;
+
+            NetworkPlayerMotor other =
+                hit.GetComponent<NetworkPlayerMotor>();
+
+            if (other == null)
+                continue;
+
+            Vector3 dir =
+                transform.position -
+                other.transform.position;
+
+            dir.y = 0f;
+
+            float distance = dir.magnitude;
+
+            float minDistance =
+                playerRadius * 2f;
+
+            if (distance < 0.001f)
+            {
+                dir = transform.forward;
+                distance = 0.001f;
+            }
+
+            if (distance < minDistance)
+            {
+                Vector3 push =
+                    dir.normalized *
+                    ((minDistance - distance) * 0.5f);
+
+                transform.position += push;
+            }
+        }
     }
 
     private void GroundCheck()

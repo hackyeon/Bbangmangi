@@ -10,6 +10,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     public AttackJoystick attackJoystick;
 
     private NetworkRunner runner;
+    private readonly Dictionary<PlayerRef, NetworkObject> spawnedPlayers = new();
 
     async void Start()
     {
@@ -71,16 +72,35 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         if (!runner.IsServer)
             return;
 
+        if (spawnedPlayers.ContainsKey(player))
+            return;
+
         Vector3 spawnPosition = new Vector3(0, 5, 0);
 
-        runner.Spawn(
+        NetworkObject playerObject = runner.Spawn(
             playerPrefab,
             spawnPosition,
             Quaternion.identity,
             player
         );
+
+        spawnedPlayers.Add(player, playerObject);
     }
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+    {
+        if (!runner.IsServer)
+            return;
+
+        if (spawnedPlayers.TryGetValue(player, out NetworkObject playerObject))
+        {
+            if (playerObject != null)
+            {
+                runner.Despawn(playerObject);
+            }
+
+            spawnedPlayers.Remove(player);
+        }
+    }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }

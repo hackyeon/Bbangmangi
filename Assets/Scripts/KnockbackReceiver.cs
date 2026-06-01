@@ -3,8 +3,8 @@ using UnityEngine;
 
 public class KnockbackReceiver : NetworkBehaviour
 {
-    public float stunDuration = 0.35f;
-    public float damping = 8f;
+    public float stunDuration = 0.55f;
+    public float damping = 3f;
     public bool isPlayer;
 
     public bool IsStunned { get; private set; }
@@ -26,7 +26,7 @@ public class KnockbackReceiver : NetworkBehaviour
         stunTimer = stunDuration;
         IsStunned = true;
 
-        if (isPlayer)
+        if (HasInputAuthority)
             CameraShake.Instance?.Shake();
 
         hitFlash?.Flash();
