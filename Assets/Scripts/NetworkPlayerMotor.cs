@@ -9,7 +9,6 @@ public class NetworkPlayerMotor : NetworkBehaviour
     public float capsuleHalfHeight = 1f;
     public float playerRadius = 0.5f;
     public LayerMask groundLayer;
-    [Networked] public NetworkBool IsPlaying { get; set; }
 
     private float verticalVelocity;
     private KnockbackReceiver knockbackReceiver;
@@ -27,6 +26,24 @@ public class NetworkPlayerMotor : NetworkBehaviour
                 cameraFollow.target = transform;
         }
     }
+    
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        if (Object.InputAuthority == runner.LocalPlayer)
+        {
+            CharacterSelectUI ui = FindFirstObjectByType<CharacterSelectUI>();
+
+            if (ui != null)
+            {
+                ui.Show();
+                ui.SetStartButtonEnabled(true);
+            }
+
+            CameraFollow cameraFollow = Camera.main.GetComponent<CameraFollow>();
+            if (cameraFollow != null)
+                cameraFollow.target = null;
+        }
+    }
 
     public override void FixedUpdateNetwork()
     {
@@ -35,16 +52,6 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         if (GetInput(out BbangmangiInputData input))
         {
-            if (input.StartPressed && HasStateAuthority)
-            {
-                IsPlaying = true;
-                transform.position = new Vector3(0, 5, 0);
-                verticalVelocity = 0f;
-            }
-
-            if (!IsPlaying)
-                return;
-            
             moveInput = input.MoveDirection;
             attackPressed = input.AttackPressed;
         }

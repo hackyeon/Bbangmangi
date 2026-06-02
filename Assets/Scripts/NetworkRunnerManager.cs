@@ -8,12 +8,13 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     public NetworkObject playerPrefab;
     public MobileJoystick moveJoystick;
     public AttackJoystick attackJoystick;
-
+    public NetworkObject commandPrefab;
+    
+    private readonly Dictionary<PlayerRef, NetworkObject> playerCommands = new();
     private NetworkRunner runner;
     private CharacterSelectUI characterSelectUI;
-
     private bool pendingStart;
-    private readonly Dictionary<PlayerRef, NetworkObject> spawnedPlayers = new();
+    private string pendingNickname;
 
     async void Start()
     {
@@ -33,8 +34,11 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 
         if (result.Ok)
         {
-            Debug.Log("Fusion 연결 성공");
-            characterSelectUI?.SetStartButtonEnabled(true);
+            if (NetworkGameManager.Instance != null)
+                NetworkGameManager.Instance.Initialize(runner);
+
+            if (characterSelectUI != null)
+                characterSelectUI.SetStartButtonEnabled(true);
         }
         else
         {
@@ -50,6 +54,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
+        pendingNickname = nickname;
         pendingStart = true;
     }
 
@@ -58,30 +63,33 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         if (!runner.IsServer)
             return;
 
-        if (spawnedPlayers.ContainsKey(player))
+        if (playerCommands.ContainsKey(player))
             return;
 
-        NetworkObject playerObject = runner.Spawn(
-            playerPrefab,
-            new Vector3(0, -100, 0),
+        NetworkObject commandObject = runner.Spawn(
+            commandPrefab,
+            Vector3.zero,
             Quaternion.identity,
             player
         );
 
-        spawnedPlayers[player] = playerObject;
+        playerCommands[player] = commandObject;
     }
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
+        if (NetworkGameManager.Instance != null)
+            NetworkGameManager.Instance.DespawnPlayer(player);
+
         if (!runner.IsServer)
             return;
 
-        if (spawnedPlayers.TryGetValue(player, out NetworkObject playerObject))
+        if (playerCommands.TryGetValue(player, out NetworkObject commandObject))
         {
-            if (playerObject != null)
-                runner.Despawn(playerObject);
+            if (commandObject != null)
+                runner.Despawn(commandObject);
 
-            spawnedPlayers.Remove(player);
+            playerCommands.Remove(player);
         }
     }
 
@@ -117,7 +125,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             data.StartPressed = true;
             pendingStart = false;
         }
-
+        
         input.Set(data);
     }
 

@@ -287,6 +287,8 @@ MonoBehaviour:
     type: 3}
   moveJoystick: {fileID: 1381844462}
   attackJoystick: {fileID: 2014469472}
+  commandPrefab: {fileID: 2195978277497058632, guid: 3a1975408b09a40dba977c2941952112,
+    type: 3}
 --- !u!4 &66244792
 Transform:
   m_ObjectHideFlags: 0
@@ -963,7 +965,7 @@ Transform:
   m_GameObject: {fileID: 963194225}
   serializedVersion: 2
   m_LocalRotation: {x: 0.38268343, y: 0, z: 0, w: 0.92387956}
-  m_LocalPosition: {x: 0, y: 14, z: -10}
+  m_LocalPosition: {x: 0, y: 32, z: -8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -998,6 +1000,7 @@ MonoBehaviour:
   target: {fileID: 0}
   offset: {x: 0, y: 10, z: -10}
   smoothSpeed: 12
+  defaultPosition: {x: 0, y: 32, z: -8}
 --- !u!1 &977679151
 GameObject:
   m_ObjectHideFlags: 0
@@ -2064,6 +2067,53 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1518223915}
   m_CullTransparentMesh: 1
+--- !u!1 &1668862068
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1668862071}
+  - component: {fileID: 1668862069}
+  m_Layer: 0
+  m_Name: NetworkGameManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1668862069
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1668862068}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20ad0982d27154769b493fa69ffd6304, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkGameManager
+  playerPrefab: {fileID: -3098761820489824526, guid: 4002f9163460349efbc785ea695ea238,
+    type: 3}
+  spawnHeight: 20
+--- !u!4 &1668862071
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1668862068}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1783451632
 GameObject:
   m_ObjectHideFlags: 0
@@ -2230,3 +2280,4 @@ SceneRoots:
   - {fileID: 31232703}
   - {fileID: 1783451635}
   - {fileID: 66244792}
+  - {fileID: 1668862071}
