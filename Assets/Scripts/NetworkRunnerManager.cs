@@ -10,12 +10,15 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     public AttackJoystick attackJoystick;
 
     private NetworkRunner runner;
-    private readonly Dictionary<PlayerRef, NetworkObject> spawnedPlayers = new();
     private CharacterSelectUI characterSelectUI;
-    
+
+    private bool pendingStart;
+    private readonly Dictionary<PlayerRef, NetworkObject> spawnedPlayers = new();
+
     async void Start()
     {
         characterSelectUI = FindFirstObjectByType<CharacterSelectUI>();
+
         runner = gameObject.AddComponent<NetworkRunner>();
         runner.ProvideInput = true;
         runner.AddCallbacks(this);
@@ -23,7 +26,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         var result = await runner.StartGame(
             new StartGameArgs()
             {
-                GameMode = GameMode.Shared,
+                GameMode = GameMode.AutoHostOrClient,
                 SessionName = "BbangmangiRoom",
                 SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
             });
@@ -31,8 +34,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         if (result.Ok)
         {
             Debug.Log("Fusion 연결 성공");
-            if (characterSelectUI != null)
-                characterSelectUI.SetStartButtonEnabled(true);
+            characterSelectUI?.SetStartButtonEnabled(true);
         }
         else
         {
@@ -48,19 +50,20 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        Debug.Log($"RequestSpawn: {nickname}");
-
-        SpawnPlayer(runner.LocalPlayer, nickname);
+        pendingStart = true;
     }
 
-    private void SpawnPlayer(PlayerRef player, string nickname)
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
+        if (!runner.IsServer)
+            return;
+
         if (spawnedPlayers.ContainsKey(player))
             return;
 
         NetworkObject playerObject = runner.Spawn(
             playerPrefab,
-            new Vector3(0, 5, 0),
+            new Vector3(0, -100, 0),
             Quaternion.identity,
             player
         );
@@ -68,13 +71,11 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         spawnedPlayers[player] = playerObject;
     }
 
-    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
-    {
-        Debug.Log($"Player Joined: {player.PlayerId}");
-    }
-
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
+        if (!runner.IsServer)
+            return;
+
         if (spawnedPlayers.TryGetValue(player, out NetworkObject playerObject))
         {
             if (playerObject != null)
@@ -104,16 +105,18 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         data.MoveDirection = move;
 
         if (attackJoystick != null && attackJoystick.ConsumeAttack())
-        {
             data.AttackPressed = true;
-        }
 
 #if UNITY_EDITOR
         if (Input.GetKeyDown(KeyCode.Space))
-        {
             data.AttackPressed = true;
-        }
 #endif
+
+        if (pendingStart)
+        {
+            data.StartPressed = true;
+            pendingStart = false;
+        }
 
         input.Set(data);
     }

@@ -68,6 +68,9 @@ public class BatAttack : NetworkBehaviour
 
     private void Hit()
     {
+        if (!HasStateAuthority)
+            return;
+        
         Vector3 attackPoint =
             transform.position + transform.forward * attackOffset;
 
@@ -96,7 +99,7 @@ public class BatAttack : NetworkBehaviour
                 dir * knockbackPower +
                 Vector3.up * upwardPower;
 
-            receiver.RequestKnockback(velocity, Object.InputAuthority);
+            receiver.ApplyKnockback(velocity, Object.InputAuthority);
 
             if (hitParticlePrefab != null)
             {
