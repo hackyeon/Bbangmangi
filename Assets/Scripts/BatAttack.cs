@@ -8,8 +8,8 @@ public class BatAttack : NetworkBehaviour
 
     public float attackRange = 2.2f;
     public float attackOffset = 1.2f;
-    public float knockbackPower = 12f;
-    public float upwardPower = 4f;
+    public float knockbackPower = 26f;
+    public float upwardPower = 13f;
     public float attackDuration = 0.09f;
 
     public GameObject hitParticlePrefab;
@@ -17,6 +17,18 @@ public class BatAttack : NetworkBehaviour
     private bool isAttacking;
 
     public void Attack()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        if (isAttacking)
+            return;
+
+        RPC_PlayAttack();
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    public void RPC_PlayAttack()
     {
         if (isAttacking || bat == null)
             return;
@@ -42,7 +54,9 @@ public class BatAttack : NetworkBehaviour
 
             if (!didHit && t >= 0.15f)
             {
-                Hit();
+                if (HasStateAuthority)
+                    Hit();
+
                 didHit = true;
             }
 
@@ -68,9 +82,6 @@ public class BatAttack : NetworkBehaviour
 
     private void Hit()
     {
-        if (!HasStateAuthority)
-            return;
-        
         Vector3 attackPoint =
             transform.position + transform.forward * attackOffset;
 
