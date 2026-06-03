@@ -5,7 +5,8 @@ using UnityEngine;
 public class NetworkGameManager : MonoBehaviour
 {
     public static NetworkGameManager Instance { get; private set; }
-
+    
+    public CharacterData[] characters;
     public NetworkObject playerPrefab;
     public float spawnHeight = 20f;
 
@@ -25,28 +26,38 @@ public class NetworkGameManager : MonoBehaviour
     public void RequestSpawn(
         PlayerRef player,
         string nickname,
-        CharacterType characterType
+        int characterId
     )
     {
         if (runner == null || !runner.IsRunning)
-        {
-            Debug.LogError("[NetworkGameManager] Runner is not ready");
             return;
-        }
 
         if (!runner.IsServer)
-        {
-            Debug.LogWarning("[NetworkGameManager] Only server can spawn");
             return;
+
+        CharacterData character = FindCharacter(characterId);
+
+        if (character == null)
+            return;
+
+        SpawnPlayer(player, nickname, character);
+    }
+    
+    private CharacterData FindCharacter(int characterId)
+    {
+        foreach (CharacterData character in characters)
+        {
+            if (character != null && character.id == characterId)
+                return character;
         }
 
-        SpawnPlayer(player, nickname, characterType);
+        return null;
     }
 
     private void SpawnPlayer(
         PlayerRef player,
         string nickname,
-        CharacterType characterType
+        CharacterData character
     )
     {
         if (spawnedPlayers.ContainsKey(player))
@@ -71,7 +82,7 @@ public class NetworkGameManager : MonoBehaviour
             playerObject.GetComponent<NetworkPlayerStats>();
 
         if (stats != null)
-            stats.Apply(characterType);
+            stats.Apply(character);
     }
 
     public void DespawnPlayer(PlayerRef player)

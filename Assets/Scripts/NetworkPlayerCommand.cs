@@ -10,18 +10,18 @@ public class NetworkPlayerCommand : NetworkBehaviour
         }
     }
 
-    public void RequestSpawn(string nickname, CharacterType characterType)
+    public void RequestSpawn(string nickname, int characterId)
     {
-        RPC_RequestSpawn(nickname, (int)characterType);
+        RPC_RequestSpawn(nickname, characterId);
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    public void RPC_RequestSpawn(string nickname, int characterType)
+    public void RPC_RequestSpawn(string nickname, int characterId)
     {
         NetworkGameManager.Instance.RequestSpawn(
             Object.InputAuthority,
             nickname,
-            (CharacterType)characterType
+            characterId
         );
     }
 }

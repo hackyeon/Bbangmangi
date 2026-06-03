@@ -9,11 +9,14 @@ public class CharacterSelectUI : MonoBehaviour
     public Button startButton;
     public TMP_Text startButtonText;
     public TMP_Text messageText;
+    public CharacterData[] characters;
+    public Transform characterButtonParent;
+    public CharacterButtonUI characterButtonPrefab;
 
+    private CharacterData selectedCharacter;
     private NetworkRunnerManager networkRunnerManager;
     private bool isNetworkReady;
     private string lastNickname;
-    private CharacterType selectedCharacterType = CharacterType.Balance;
 
     private void Start()
     {
@@ -33,23 +36,39 @@ public class CharacterSelectUI : MonoBehaviour
             nameInputField.characterLimit = 12;
             nameInputField.onValueChanged.AddListener(OnNameChanged);
         }
+        
+        CreateCharacterButtons();
+
+        if (characters != null && characters.Length > 0)
+            SelectCharacter(characters[0]);
 
         Show();
     }
-
-    public void SelectSpeed()
+    
+    private void CreateCharacterButtons()
     {
-        selectedCharacterType = CharacterType.Speed;
+        if (characters == null ||
+            characterButtonParent == null ||
+            characterButtonPrefab == null)
+            return;
+
+        foreach (Transform child in characterButtonParent)
+        {
+            Destroy(child.gameObject);
+        }
+
+        foreach (CharacterData character in characters)
+        {
+            CharacterButtonUI button =
+                Instantiate(characterButtonPrefab, characterButtonParent);
+
+            button.Bind(character, this);
+        }
     }
 
-    public void SelectBalance()
+    public void SelectCharacter(CharacterData character)
     {
-        selectedCharacterType = CharacterType.Balance;
-    }
-
-    public void SelectPower()
-    {
-        selectedCharacterType = CharacterType.Power;
+        selectedCharacter = character;
     }
     
     private void OnClickStart()
@@ -63,7 +82,7 @@ public class CharacterSelectUI : MonoBehaviour
         
         networkRunnerManager.RequestSpawn(
             nickname,
-            selectedCharacterType
+            selectedCharacter.id
         );
         Hide();
     }
