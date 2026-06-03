@@ -33,6 +33,12 @@ public class BatAttack : NetworkBehaviour
         if (isAttacking || bat == null)
             return;
 
+        NetworkPlayerAnimation playerAnimation =
+            GetComponent<NetworkPlayerAnimation>();
+
+        if (playerAnimation != null)
+            playerAnimation.PlayAttack();
+        
         StartCoroutine(AttackRoutine());
     }
 

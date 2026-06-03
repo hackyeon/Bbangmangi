@@ -9,7 +9,8 @@ public class NetworkPlayerMotor : NetworkBehaviour
     public float capsuleHalfHeight = 1f;
     public float playerRadius = 0.5f;
     public LayerMask groundLayer;
-
+    public bool IsGrounded { get; private set; }
+    
     private float verticalVelocity;
     private KnockbackReceiver knockbackReceiver;
     private BatAttack batAttack;
@@ -141,6 +142,8 @@ public class NetworkPlayerMotor : NetworkBehaviour
                 groundCheckDistance,
                 groundLayer))
         {
+            IsGrounded = true;
+            
             if (verticalVelocity < 0f)
             {
                 verticalVelocity = 0f;
@@ -149,6 +152,10 @@ public class NetworkPlayerMotor : NetworkBehaviour
                 position.y = hit.point.y + capsuleHalfHeight;
                 transform.position = position;
             }
+        }
+        else
+        {
+            IsGrounded = false;
         }
     }
 }
