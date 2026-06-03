@@ -1,54 +1,111 @@
 using System.Collections.Generic;
 using System.Linq;
 using Fusion;
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class RankingUI : MonoBehaviour
 {
-    public Text rankingText;
+    public TMP_Text rankingText;
+
+    private NetworkRunner runner;
+
+    private void Start()
+    {
+        runner = FindFirstObjectByType<NetworkRunner>();
+    }
 
     private void Update()
     {
         if (rankingText == null)
             return;
 
+        if (runner == null)
+            runner = FindFirstObjectByType<NetworkRunner>();
+
         NetworkPlayerScore[] players =
             FindObjectsByType<NetworkPlayerScore>(
                 FindObjectsSortMode.None
             );
 
-        List<NetworkPlayerScore> validPlayers = new();
-
-        foreach (NetworkPlayerScore player in players)
-        {
-            if (player == null)
-                continue;
-
-            if (player.Object == null)
-                continue;
-
-            if (!player.Object.IsValid)
-                continue;
-
-            validPlayers.Add(player);
-        }
-
         List<NetworkPlayerScore> ranking =
-            validPlayers
+            players
+                .Where(IsValidPlayer)
                 .OrderByDescending(player => player.KillCount)
+                .ThenBy(player => player.Object.InputAuthority.PlayerId)
                 .ToList();
 
-        string text = "Ranking\n";
+        PlayerRef localPlayer =
+            runner != null ? runner.LocalPlayer : PlayerRef.None;
 
-        for (int i = 0; i < ranking.Count; i++)
+        int myIndex = ranking.FindIndex(
+            player => player.Object.InputAuthority == localPlayer
+        );
+
+        string text = "";
+
+        int topCount = Mathf.Min(5, ranking.Count);
+
+        for (int i = 0; i < topCount; i++)
         {
-            PlayerRef playerRef =
-                ranking[i].Object.InputAuthority;
+            text += BuildLine(i, ranking[i], localPlayer);
+        }
 
-            text += $"{i + 1}. Player {playerRef.PlayerId} : {ranking[i].KillCount}\n";
+        if (myIndex >= 5)
+        {
+            text += "...\n";
+            text += BuildLine(myIndex, ranking[myIndex], localPlayer);
         }
 
         rankingText.text = text;
+    }
+
+    private bool IsValidPlayer(NetworkPlayerScore player)
+    {
+        if (player == null)
+            return false;
+
+        if (player.Object == null)
+            return false;
+
+        if (!player.Object.IsValid)
+            return false;
+
+        return true;
+    }
+
+    private string BuildLine(
+        int index,
+        NetworkPlayerScore player,
+        PlayerRef localPlayer
+    )
+    {
+        string nickname = GetNickname(player);
+        int rank = index + 1;
+        int killCount = player.KillCount;
+
+        string line =
+            $"{rank}. {nickname}  {killCount}\n";
+
+        if (player.Object.InputAuthority == localPlayer)
+            return $"<color=#00FF88>{line}</color>";
+
+        return line;
+    }
+
+    private string GetNickname(NetworkPlayerScore player)
+    {
+        NetworkPlayerName playerName =
+            player.GetComponent<NetworkPlayerName>();
+
+        if (playerName == null)
+            return $"Player {player.Object.InputAuthority.PlayerId}";
+
+        string nickname = playerName.Nickname.ToString();
+
+        if (string.IsNullOrEmpty(nickname))
+            return $"Player {player.Object.InputAuthority.PlayerId}";
+
+        return nickname;
     }
 }
