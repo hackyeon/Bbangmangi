@@ -5,17 +5,28 @@ using UnityEngine;
 
 public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 {
+    public static NetworkRunnerManager Instance { get; private set; }
+    
     public NetworkObject playerPrefab;
     public MobileJoystick moveJoystick;
     public AttackJoystick attackJoystick;
     public NetworkObject commandPrefab;
     
+    private NetworkPlayerCommand localCommand;
     private readonly Dictionary<PlayerRef, NetworkObject> playerCommands = new();
     private NetworkRunner runner;
     private CharacterSelectUI characterSelectUI;
-    private bool pendingStart;
-    private string pendingNickname;
 
+    private void Awake()
+    {
+        Instance = this;
+    }
+    
+    public void SetLocalCommand(NetworkPlayerCommand command)
+    {
+        localCommand = command;
+    }
+    
     async void Start()
     {
         characterSelectUI = FindFirstObjectByType<CharacterSelectUI>();
@@ -48,14 +59,13 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void RequestSpawn(string nickname)
     {
-        if (runner == null || !runner.IsRunning)
+        if (localCommand == null)
         {
-            Debug.LogError("Runner is not ready");
+            Debug.LogError("Local PlayerCommand is not ready");
             return;
         }
 
-        pendingNickname = nickname;
-        pendingStart = true;
+        localCommand.RequestSpawn(nickname);
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
@@ -119,12 +129,6 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         if (Input.GetKeyDown(KeyCode.Space))
             data.AttackPressed = true;
 #endif
-
-        if (pendingStart)
-        {
-            data.StartPressed = true;
-            pendingStart = false;
-        }
         
         input.Set(data);
     }
