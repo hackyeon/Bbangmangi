@@ -1,16 +1,12 @@
-using System.Collections;
 using Fusion;
 using UnityEngine;
 
 public class BatAttack : NetworkBehaviour
 {
-    public Transform bat;
-
     public float attackRange = 2.2f;
     public float attackOffset = 1.2f;
     public float knockbackPower = 26f;
     public float upwardPower = 13f;
-    public float attackDuration = 0.09f;
 
     public GameObject hitParticlePrefab;
 
@@ -30,59 +26,25 @@ public class BatAttack : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     public void RPC_PlayAttack()
     {
-        if (isAttacking || bat == null)
+        if (isAttacking)
             return;
+
+        isAttacking = true;
 
         NetworkPlayerAnimation playerAnimation =
             GetComponent<NetworkPlayerAnimation>();
 
         if (playerAnimation != null)
             playerAnimation.PlayAttack();
-        
-        StartCoroutine(AttackRoutine());
+
+        Invoke(nameof(EndAttack), 0.45f);
+
+        if (HasStateAuthority)
+            Invoke(nameof(Hit), 0.18f);
     }
 
-    private IEnumerator AttackRoutine()
+    private void EndAttack()
     {
-        isAttacking = true;
-
-        Quaternion startRot = bat.localRotation;
-        Quaternion endRot = startRot * Quaternion.Euler(0f, 0f, -120f);
-
-        float time = 0f;
-        bool didHit = false;
-
-        while (time < attackDuration)
-        {
-            float t = time / attackDuration;
-
-            bat.localRotation = Quaternion.Slerp(startRot, endRot, t);
-
-            if (!didHit && t >= 0.15f)
-            {
-                if (HasStateAuthority)
-                    Hit();
-
-                didHit = true;
-            }
-
-            time += Time.deltaTime;
-            yield return null;
-        }
-
-        time = 0f;
-
-        while (time < attackDuration)
-        {
-            float t = time / attackDuration;
-
-            bat.localRotation = Quaternion.Slerp(endRot, startRot, t);
-
-            time += Time.deltaTime;
-            yield return null;
-        }
-
-        bat.localRotation = startRot;
         isAttacking = false;
     }
 

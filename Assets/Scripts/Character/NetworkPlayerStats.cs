@@ -81,8 +81,7 @@ public class NetworkPlayerStats : NetworkBehaviour
 
         foreach (Transform child in visualRoot)
         {
-            if (child.name != "Bat")
-                Destroy(child.gameObject);
+            Destroy(child.gameObject);
         }
 
         currentModel = Instantiate(
