@@ -12,6 +12,5 @@ public class CharacterData : ScriptableObject
     public float moveSpeed = 6f;
     public float knockbackPower = 26f;
 
-    public Sprite icon;
     public GameObject modelPrefab;
 }

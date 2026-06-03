@@ -4,7 +4,6 @@ using UnityEngine.UI;
 
 public class CharacterButtonUI : MonoBehaviour
 {
-    public Image iconImage;
     public TMP_Text nameText;
     public Button button;
 
@@ -15,9 +14,6 @@ public class CharacterButtonUI : MonoBehaviour
     {
         characterData = data;
         owner = selectUI;
-
-        if (iconImage != null)
-            iconImage.sprite = data.icon;
 
         if (nameText != null)
             nameText.text = data.characterName;

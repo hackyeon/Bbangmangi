@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e30cf5226e8134bbd8c0ed5fbce324f0, type: 3}
+  m_Name: GolemCharacter
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  id: 1
+  characterName: Golem
+  moveSpeed: 4.5
+  knockbackPower: 34
+  modelPrefab: {fileID: 1845945369076765872, guid: f4bab4f7ee24347909b2acf31b548ed5,
+    type: 3}
