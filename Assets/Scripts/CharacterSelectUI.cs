@@ -12,6 +12,7 @@ public class CharacterSelectUI : MonoBehaviour
 
     private NetworkRunnerManager networkRunnerManager;
     private bool isNetworkReady;
+    private string lastNickname;
 
     private void Start()
     {
@@ -42,6 +43,8 @@ public class CharacterSelectUI : MonoBehaviour
 
         string nickname = nameInputField.text.Trim();
 
+        lastNickname = nickname;
+        
         networkRunnerManager.RequestSpawn(nickname);
         Hide();
     }
@@ -56,6 +59,9 @@ public class CharacterSelectUI : MonoBehaviour
     {
         if (panel != null)
             panel.SetActive(true);
+        
+        if (nameInputField != null)
+            lastNickname = nameInputField.text.Trim();
 
         ValidateInput();
     }
@@ -165,6 +171,9 @@ public class CharacterSelectUI : MonoBehaviour
                     nickname,
                     System.StringComparison.OrdinalIgnoreCase))
             {
+                if (nickname == lastNickname)
+                    continue;
+
                 return true;
             }
         }
