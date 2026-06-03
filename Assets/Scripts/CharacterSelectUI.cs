@@ -13,6 +13,7 @@ public class CharacterSelectUI : MonoBehaviour
     private NetworkRunnerManager networkRunnerManager;
     private bool isNetworkReady;
     private string lastNickname;
+    private CharacterType selectedCharacterType = CharacterType.Balance;
 
     private void Start()
     {
@@ -36,6 +37,21 @@ public class CharacterSelectUI : MonoBehaviour
         Show();
     }
 
+    public void SelectSpeed()
+    {
+        selectedCharacterType = CharacterType.Speed;
+    }
+
+    public void SelectBalance()
+    {
+        selectedCharacterType = CharacterType.Balance;
+    }
+
+    public void SelectPower()
+    {
+        selectedCharacterType = CharacterType.Power;
+    }
+    
     private void OnClickStart()
     {
         if (!ValidateInput())
@@ -45,7 +61,10 @@ public class CharacterSelectUI : MonoBehaviour
 
         lastNickname = nickname;
         
-        networkRunnerManager.RequestSpawn(nickname);
+        networkRunnerManager.RequestSpawn(
+            nickname,
+            selectedCharacterType
+        );
         Hide();
     }
 

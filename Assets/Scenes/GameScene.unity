@@ -319,7 +319,7 @@ GameObject:
   - component: {fileID: 142138437}
   - component: {fileID: 142138436}
   m_Layer: 5
-  m_Name: CharacterButton3
+  m_Name: PowerButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -388,7 +388,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 142138437}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 31232705}
+        m_TargetAssemblyTypeName: CharacterSelectUI, Assembly-CSharp
+        m_MethodName: SelectPower
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &142138437
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1523,7 +1535,7 @@ GameObject:
   - component: {fileID: 1226291892}
   - component: {fileID: 1226291891}
   m_Layer: 5
-  m_Name: CharacterButton2
+  m_Name: BalanceButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1592,7 +1604,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1226291892}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 31232705}
+        m_TargetAssemblyTypeName: CharacterSelectUI, Assembly-CSharp
+        m_MethodName: SelectBalance
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1226291892
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2676,7 +2700,7 @@ GameObject:
   - component: {fileID: 2038302187}
   - component: {fileID: 2038302186}
   m_Layer: 5
-  m_Name: CharacterButton1
+  m_Name: SpeedButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2745,7 +2769,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2038302187}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 31232705}
+        m_TargetAssemblyTypeName: CharacterSelectUI, Assembly-CSharp
+        m_MethodName: SelectSpeed
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &2038302187
 MonoBehaviour:
   m_ObjectHideFlags: 0

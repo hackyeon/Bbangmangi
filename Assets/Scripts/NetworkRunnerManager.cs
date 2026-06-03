@@ -57,7 +57,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    public void RequestSpawn(string nickname)
+    public void RequestSpawn(string nickname, CharacterType characterType)
     {
         if (localCommand == null)
         {
@@ -65,7 +65,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        localCommand.RequestSpawn(nickname);
+        localCommand.RequestSpawn(nickname, characterType);
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)

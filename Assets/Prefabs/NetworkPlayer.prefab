@@ -167,6 +167,7 @@ GameObject:
   - component: {fileID: 2577122104268397432}
   - component: {fileID: 5336119312162996882}
   - component: {fileID: 986673149698917724}
+  - component: {fileID: -2082354704470798761}
   m_Layer: 0
   m_Name: NetworkPlayer
   m_TagString: Untagged
@@ -335,6 +336,7 @@ MonoBehaviour:
   - {fileID: 2577122104268397432}
   - {fileID: 5336119312162996882}
   - {fileID: 986673149698917724}
+  - {fileID: -2082354704470798761}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &-1342913374162665895
 MonoBehaviour:
@@ -348,6 +350,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b40134b9bc9754d00a558b12b7d6b6ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerScore
+  _KillCount: 0
 --- !u!114 &2726466813643713992
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -415,6 +418,19 @@ MonoBehaviour:
     _length: 0
     _data:
       Data: 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+--- !u!114 &-2082354704470798761
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2441481751626903824}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96f848b27de1b4894885722ac269135d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerStats
+  _CharacterType: 0
 --- !u!1 &2613241340424635299
 GameObject:
   m_ObjectHideFlags: 0

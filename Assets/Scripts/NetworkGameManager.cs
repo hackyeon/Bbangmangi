@@ -22,7 +22,11 @@ public class NetworkGameManager : MonoBehaviour
         runner = networkRunner;
     }
 
-    public void RequestSpawn(PlayerRef player, string nickname)
+    public void RequestSpawn(
+        PlayerRef player,
+        string nickname,
+        CharacterType characterType
+    )
     {
         if (runner == null || !runner.IsRunning)
         {
@@ -36,10 +40,14 @@ public class NetworkGameManager : MonoBehaviour
             return;
         }
 
-        SpawnPlayer(player, nickname);
+        SpawnPlayer(player, nickname, characterType);
     }
 
-    private void SpawnPlayer(PlayerRef player, string nickname)
+    private void SpawnPlayer(
+        PlayerRef player,
+        string nickname,
+        CharacterType characterType
+    )
     {
         if (spawnedPlayers.ContainsKey(player))
             return;
@@ -57,9 +65,13 @@ public class NetworkGameManager : MonoBehaviour
             playerObject.GetComponent<NetworkPlayerName>();
 
         if (playerName != null)
-        {
             playerName.SetNickname(nickname);
-        }
+
+        NetworkPlayerStats stats =
+            playerObject.GetComponent<NetworkPlayerStats>();
+
+        if (stats != null)
+            stats.Apply(characterType);
     }
 
     public void DespawnPlayer(PlayerRef player)
