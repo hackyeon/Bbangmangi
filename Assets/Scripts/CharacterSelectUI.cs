@@ -145,33 +145,6 @@ public class CharacterSelectUI : MonoBehaviour
         SetMessage("");
         return true;
     }
-    
-    private bool IsValidNickname(string nickname)
-    {
-        if (string.IsNullOrEmpty(nickname))
-            return false;
-
-        if (nickname.Length > 12)
-            return false;
-
-        foreach (char c in nickname)
-        {
-            bool isLetter =
-                c >= 'a' && c <= 'z' ||
-                c >= 'A' && c <= 'Z';
-
-            bool isDigit =
-                c >= '0' && c <= '9';
-
-            bool isUnderscore =
-                c == '_';
-
-            if (!isLetter && !isDigit && !isUnderscore)
-                return false;
-        }
-
-        return true;
-    }
 
     private bool IsDuplicateName(string nickname)
     {
