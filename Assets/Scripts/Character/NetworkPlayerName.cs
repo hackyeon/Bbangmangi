@@ -6,11 +6,19 @@ public class NetworkPlayerName : NetworkBehaviour
 {
     public TMP_Text nameText;
 
+    private readonly Color myNameColor =
+        new Color32(0x5D, 0xFF, 0xB5, 0xFF);
+
+    private Color defaultNameColor;
+
     [Networked]
     public NetworkString<_16> Nickname { get; set; }
 
     public override void Spawned()
     {
+        if (nameText != null)
+            defaultNameColor = nameText.color;
+
         UpdateNameText();
     }
 
@@ -29,7 +37,14 @@ public class NetworkPlayerName : NetworkBehaviour
 
     private void UpdateNameText()
     {
-        if (nameText != null)
-            nameText.text = Nickname.ToString();
+        if (nameText == null)
+            return;
+
+        nameText.text = Nickname.ToString();
+
+        nameText.color =
+            HasInputAuthority
+                ? myNameColor
+                : defaultNameColor;
     }
 }

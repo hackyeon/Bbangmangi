@@ -88,7 +88,7 @@ public class RankingUI : MonoBehaviour
             $"{rank}. {nickname}  {killCount}\n";
 
         if (player.Object.InputAuthority == localPlayer)
-            return $"<color=#00FF88>{line}</color>";
+            return $"<color=#5DFFB5>{line}</color>";
 
         return line;
     }
