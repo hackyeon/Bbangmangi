@@ -13,6 +13,8 @@ public class CharacterSelectUI : MonoBehaviour
     public Transform characterButtonParent;
     public CharacterButtonUI characterButtonPrefab;
 
+    [SerializeField]
+    private GameObject gameUI;
     private CharacterData selectedCharacter;
     private NetworkRunnerManager networkRunnerManager;
     private bool isNetworkReady;
@@ -97,7 +99,10 @@ public class CharacterSelectUI : MonoBehaviour
     {
         if (panel != null)
             panel.SetActive(true);
-        
+
+        if (gameUI != null)
+            gameUI.SetActive(false);
+
         if (nameInputField != null)
             lastNickname = nameInputField.text.Trim();
 
@@ -108,6 +113,9 @@ public class CharacterSelectUI : MonoBehaviour
     {
         if (panel != null)
             panel.SetActive(false);
+
+        if (gameUI != null)
+            gameUI.SetActive(true);
     }
 
     private void OnNameChanged(string value)
