@@ -12,9 +12,67 @@ public class NetworkPlayerAnimation : NetworkBehaviour
     private static readonly int IsStunnedHash = Animator.StringToHash("IsStunned");
     private static readonly int AttackHash = Animator.StringToHash("Attack");
 
-    private Vector3 lastPosition;
+    [Networked] private float AnimSpeed { get; set; }
+    [Networked] private NetworkBool AnimIsFalling { get; set; }
+    [Networked] private NetworkBool AnimIsStunned { get; set; }
+    [Networked] private int AttackVersion { get; set; }
+
+    private int renderedAttackVersion;
+    private Vector3 lastNetworkPosition;
 
     public override void Spawned()
+    {
+        SetupReferences();
+
+        lastNetworkPosition = transform.position;
+        renderedAttackVersion = AttackVersion;
+    }
+
+    public override void FixedUpdateNetwork()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        Vector3 currentPosition = transform.position;
+        Vector3 delta = currentPosition - lastNetworkPosition;
+        delta.y = 0f;
+
+        AnimSpeed =
+            delta.magnitude / Mathf.Max(Runner.DeltaTime, 0.0001f);
+
+        AnimIsFalling = motor != null && !motor.IsGrounded;
+        AnimIsStunned = knockbackReceiver != null && knockbackReceiver.IsStunned;
+
+        lastNetworkPosition = currentPosition;
+    }
+
+    public override void Render()
+    {
+        SetupReferences();
+
+        if (animator == null || animator.runtimeAnimatorController == null)
+            return;
+
+        animator.SetFloat(SpeedHash, AnimSpeed);
+        animator.SetBool(IsFallingHash, AnimIsFalling);
+        animator.SetBool(IsStunnedHash, AnimIsStunned);
+
+        if (renderedAttackVersion != AttackVersion)
+        {
+            renderedAttackVersion = AttackVersion;
+            animator.SetTrigger(AttackHash);
+        }
+    }
+
+    public void PlayAttack()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        AttackVersion++;
+    }
+
+    private void SetupReferences()
     {
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
@@ -24,41 +82,5 @@ public class NetworkPlayerAnimation : NetworkBehaviour
 
         if (knockbackReceiver == null)
             knockbackReceiver = GetComponent<KnockbackReceiver>();
-
-        lastPosition = transform.position;
-    }
-
-    private void LateUpdate()
-    {
-        if (animator == null || animator.runtimeAnimatorController == null)
-            return;
-
-        Vector3 currentPosition = transform.position;
-        Vector3 delta = currentPosition - lastPosition;
-        delta.y = 0f;
-
-        float speed = delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f);
-
-        animator.SetFloat(SpeedHash, speed);
-        animator.SetBool(IsStunnedHash, knockbackReceiver != null && knockbackReceiver.IsStunned);
-        animator.SetBool(IsFallingHash, IsFalling());
-
-        lastPosition = currentPosition;
-    }
-
-    public void PlayAttack()
-    {
-        if (animator == null || animator.runtimeAnimatorController == null)
-            return;
-
-        animator.SetTrigger(AttackHash);
-    }
-
-    private bool IsFalling()
-    {
-        if (motor == null)
-            return false;
-
-        return !motor.IsGrounded;
     }
 }

@@ -20,15 +20,6 @@ public class BatAttack : NetworkBehaviour
         if (isAttacking)
             return;
 
-        RPC_PlayAttack();
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    public void RPC_PlayAttack()
-    {
-        if (isAttacking)
-            return;
-
         isAttacking = true;
 
         NetworkPlayerAnimation playerAnimation =
@@ -38,9 +29,7 @@ public class BatAttack : NetworkBehaviour
             playerAnimation.PlayAttack();
 
         Invoke(nameof(EndAttack), 0.45f);
-
-        if (HasStateAuthority)
-            Invoke(nameof(Hit), 0.18f);
+        Invoke(nameof(Hit), 0.18f);
     }
 
     private void EndAttack()
@@ -50,6 +39,9 @@ public class BatAttack : NetworkBehaviour
 
     private void Hit()
     {
+        if (!HasStateAuthority)
+            return;
+
         Vector3 attackPoint =
             transform.position + transform.forward * attackOffset;
 
