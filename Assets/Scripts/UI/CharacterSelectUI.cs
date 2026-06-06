@@ -13,7 +13,6 @@ public class CharacterSelectUI : MonoBehaviour
     public CharacterData[] characters;
     public Transform characterButtonParent;
     public CharacterButtonUI characterButtonPrefab;
-    public CharacterPreviewUI characterPreviewUI;
 
     [SerializeField]
     private GameObject gameUI;
@@ -45,9 +44,6 @@ public class CharacterSelectUI : MonoBehaviour
         CreateCharacterButtons();
 
         selectedCharacter = null;
-
-        if (characterPreviewUI != null)
-            characterPreviewUI.Clear();
 
         Show();
     }
@@ -85,20 +81,8 @@ public class CharacterSelectUI : MonoBehaviour
 
         foreach (CharacterButtonUI button in buttons)
         {
-            bool selected = button == selectedButton;
-
-            button.SetSelected(selected);
-
-            if (selected && characterPreviewUI != null)
-            {
-                button.SetPreviewTexture(
-                    characterPreviewUI.PreviewTexture
-                );
-            }
+            button.SetSelected(button == selectedButton);
         }
-
-        if (characterPreviewUI != null)
-            characterPreviewUI.Show(character);
 
         ValidateInput();
     }

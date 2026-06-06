@@ -4,13 +4,15 @@ using UnityEngine.UI;
 
 public class CharacterButtonUI : MonoBehaviour
 {
-    [Header("Root")]
     public Button button;
+
+    [Header("Background")]
     public Image backgroundImage;
+    public Sprite normalBackgroundSprite;
+    public Sprite selectedBackgroundSprite;
 
     [Header("Preview")]
     public Image previewImage;
-    public RawImage previewRawImage;
 
     [Header("Info")]
     public TMP_Text nameText;
@@ -19,12 +21,9 @@ public class CharacterButtonUI : MonoBehaviour
     public Image speedFillImage;
     public Image powerFillImage;
 
-    [Header("Selected")]
-    public GameObject selectedMark;
-
-    [Header("Colors")]
-    public Color normalColor = new Color32(20, 25, 45, 210);
-    public Color selectedColor = new Color32(0x5D, 0xFF, 0xB5, 255);
+    [Header("Text Colors")]
+    public Color normalTextColor = Color.white;
+    public Color selectedTextColor = new Color32(0x5D, 0xFF, 0xB5, 0xFF);
 
     private const float MaxSpeed = 10f;
     private const float MaxPower = 50f;
@@ -40,10 +39,10 @@ public class CharacterButtonUI : MonoBehaviour
         owner = selectUI;
 
         if (previewImage != null)
+        {
             previewImage.sprite = data.previewImage;
-
-        if (previewRawImage != null)
-            previewRawImage.gameObject.SetActive(false);
+            previewImage.preserveAspect = true;
+        }
 
         if (nameText != null)
             nameText.text = data.characterName;
@@ -62,23 +61,18 @@ public class CharacterButtonUI : MonoBehaviour
 
     public void SetSelected(bool selected)
     {
-        if (selectedMark != null)
-            selectedMark.SetActive(selected);
-
         if (backgroundImage != null)
-            backgroundImage.color = selected ? selectedColor : normalColor;
+        {
+            backgroundImage.sprite =
+                selected
+                    ? selectedBackgroundSprite
+                    : normalBackgroundSprite;
 
-        if (previewImage != null)
-            previewImage.gameObject.SetActive(!selected);
+            backgroundImage.color = Color.white;
+        }
 
-        if (previewRawImage != null)
-            previewRawImage.gameObject.SetActive(selected);
-    }
-
-    public void SetPreviewTexture(Texture texture)
-    {
-        if (previewRawImage != null)
-            previewRawImage.texture = texture;
+        if (nameText != null)
+            nameText.color = selected ? selectedTextColor : normalTextColor;
     }
 
     private void SetProgress(Image fillImage, float value, float maxValue)

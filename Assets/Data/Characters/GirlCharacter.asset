@@ -18,3 +18,7 @@ MonoBehaviour:
   knockbackPower: 20
   modelPrefab: {fileID: 1694388104871626409, guid: 3e88ea91856ed423daa864d052327c53,
     type: 3}
+  previewImage: {fileID: 21300000, guid: fe13245a06f724f69bcdbf28afe26af9, type: 3}
+  previewPosition: {x: 0, y: 0, z: 0}
+  previewRotation: {x: 0, y: 0, z: 0}
+  previewScale: {x: 1, y: 1, z: 1}
