@@ -153,7 +153,7 @@ public class CharacterSelectUI : MonoBehaviour
             startButton.interactable = false;
 
             if (startButtonText != null)
-                startButtonText.text = "START";
+                startButtonText.text = "시작";
 
             SetMessage("캐릭터를 선택해 주세요.");
             return false;
@@ -169,7 +169,7 @@ public class CharacterSelectUI : MonoBehaviour
             startButton.interactable = false;
 
             if (startButtonText != null)
-                startButtonText.text = "START";
+                startButtonText.text = "시작";
 
             SetMessage("캐릭터 이름을 입력해 주세요.");
             return false;
@@ -180,7 +180,7 @@ public class CharacterSelectUI : MonoBehaviour
             startButton.interactable = false;
 
             if (startButtonText != null)
-                startButtonText.text = "START";
+                startButtonText.text = "시작";
 
             SetMessage("이미 사용 중인 이름입니다.");
             return false;
@@ -189,7 +189,7 @@ public class CharacterSelectUI : MonoBehaviour
         startButton.interactable = true;
 
         if (startButtonText != null)
-            startButtonText.text = "START";
+            startButtonText.text = "시작";
 
         SetMessage("");
         return true;
