@@ -9,12 +9,15 @@ public class CharacterSelectUI : MonoBehaviour
     public Button startButton;
     public TMP_Text startButtonText;
     public TMP_Text messageText;
+
     public CharacterData[] characters;
     public Transform characterButtonParent;
     public CharacterButtonUI characterButtonPrefab;
+    public CharacterPreviewUI characterPreviewUI;
 
     [SerializeField]
     private GameObject gameUI;
+
     private CharacterData selectedCharacter;
     private NetworkRunnerManager networkRunnerManager;
     private bool isNetworkReady;
@@ -31,22 +34,24 @@ public class CharacterSelectUI : MonoBehaviour
         }
 
         if (startButtonText != null)
-            startButtonText.text = "LOADING...";
+            startButtonText.text = "연결 중...";
 
         if (nameInputField != null)
         {
             nameInputField.characterLimit = 12;
-            nameInputField.onValueChanged.AddListener(OnNameChanged);
+            nameInputField.onValueChanged.AddListener(_ => ValidateInput());
         }
-        
+
         CreateCharacterButtons();
 
-        if (characters != null && characters.Length > 0)
-            SelectCharacter(characters[0]);
+        selectedCharacter = null;
+
+        if (characterPreviewUI != null)
+            characterPreviewUI.Clear();
 
         Show();
     }
-    
+
     private void CreateCharacterButtons()
     {
         if (characters == null ||
@@ -68,24 +73,49 @@ public class CharacterSelectUI : MonoBehaviour
         }
     }
 
-    public void SelectCharacter(CharacterData character)
+    public void SelectCharacter(
+        CharacterData character,
+        CharacterButtonUI selectedButton
+    )
     {
         selectedCharacter = character;
+
+        CharacterButtonUI[] buttons =
+            characterButtonParent.GetComponentsInChildren<CharacterButtonUI>();
+
+        foreach (CharacterButtonUI button in buttons)
+        {
+            bool selected = button == selectedButton;
+
+            button.SetSelected(selected);
+
+            if (selected && characterPreviewUI != null)
+            {
+                button.SetPreviewTexture(
+                    characterPreviewUI.PreviewTexture
+                );
+            }
+        }
+
+        if (characterPreviewUI != null)
+            characterPreviewUI.Show(character);
+
+        ValidateInput();
     }
-    
+
     private void OnClickStart()
     {
         if (!ValidateInput())
             return;
 
         string nickname = nameInputField.text.Trim();
-
         lastNickname = nickname;
-        
+
         networkRunnerManager.RequestSpawn(
             nickname,
             selectedCharacter.id
         );
+
         Hide();
     }
 
@@ -118,35 +148,6 @@ public class CharacterSelectUI : MonoBehaviour
             gameUI.SetActive(true);
     }
 
-    private void OnNameChanged(string value)
-    {
-        string filtered = "";
-
-        foreach (char c in value)
-        {
-            bool isLetter =
-                c >= 'a' && c <= 'z' ||
-                c >= 'A' && c <= 'Z';
-
-            bool isDigit =
-                c >= '0' && c <= '9';
-
-            bool isUnderscore =
-                c == '_';
-
-            if (isLetter || isDigit || isUnderscore)
-                filtered += c;
-        }
-
-        if (filtered != value)
-        {
-            nameInputField.text = filtered;
-            return;
-        }
-
-        ValidateInput();
-    }
-    
     private bool ValidateInput()
     {
         if (startButton == null)
@@ -157,8 +158,20 @@ public class CharacterSelectUI : MonoBehaviour
             startButton.interactable = false;
 
             if (startButtonText != null)
-                startButtonText.text = "LOADING...";
+                startButtonText.text = "연결 중...";
 
+            SetMessage("");
+            return false;
+        }
+
+        if (selectedCharacter == null)
+        {
+            startButton.interactable = false;
+
+            if (startButtonText != null)
+                startButtonText.text = "START";
+
+            SetMessage("캐릭터를 선택해 주세요.");
             return false;
         }
 
@@ -174,7 +187,7 @@ public class CharacterSelectUI : MonoBehaviour
             if (startButtonText != null)
                 startButtonText.text = "START";
 
-            SetMessage("Enter a name\nUse A-Z, 0-9, _ only");
+            SetMessage("캐릭터 이름을 입력해 주세요.");
             return false;
         }
 
@@ -185,7 +198,7 @@ public class CharacterSelectUI : MonoBehaviour
             if (startButtonText != null)
                 startButtonText.text = "START";
 
-            SetMessage("Name already taken");
+            SetMessage("이미 사용 중인 이름입니다.");
             return false;
         }
 
