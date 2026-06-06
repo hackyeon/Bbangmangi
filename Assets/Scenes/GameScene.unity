@@ -255,10 +255,10 @@ MonoBehaviour:
   startButtonText: {fileID: 716114986}
   messageText: {fileID: 1390171103}
   characters:
+  - {fileID: 11400000, guid: 46c584edea9be45da9f238e8845f50b5, type: 2}
   - {fileID: 11400000, guid: 8f53a253f24d844f49d3600778b75475, type: 2}
   - {fileID: 11400000, guid: 986a43dd5da314be89d01561f81b36e0, type: 2}
   - {fileID: 11400000, guid: 97aafcdef8c13416daacf7936f48da9a, type: 2}
-  - {fileID: 11400000, guid: 46c584edea9be45da9f238e8845f50b5, type: 2}
   characterButtonParent: {fileID: 1351780895}
   characterButtonPrefab: {fileID: 2218414400259229199, guid: e978cedd880e442afbbd217f695a22a4,
     type: 3}
@@ -733,7 +733,7 @@ Transform:
   m_GameObject: {fileID: 816884004}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0, z: 0}
+  m_LocalPosition: {x: 0, y: -1, z: 0}
   m_LocalScale: {x: 40, y: 2, z: 40}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1782,10 +1782,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkGameManager
   characters:
+  - {fileID: 11400000, guid: 46c584edea9be45da9f238e8845f50b5, type: 2}
   - {fileID: 11400000, guid: 8f53a253f24d844f49d3600778b75475, type: 2}
   - {fileID: 11400000, guid: 986a43dd5da314be89d01561f81b36e0, type: 2}
   - {fileID: 11400000, guid: 97aafcdef8c13416daacf7936f48da9a, type: 2}
-  - {fileID: 11400000, guid: 46c584edea9be45da9f238e8845f50b5, type: 2}
   playerPrefab: {fileID: -3098761820489824526, guid: 4002f9163460349efbc785ea695ea238,
     type: 3}
   spawnHeight: 20

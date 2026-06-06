@@ -12,12 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e30cf5226e8134bbd8c0ed5fbce324f0, type: 3}
   m_Name: GolemCharacter
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
-  id: 1
+  id: 2
   characterName: Golem
   moveSpeed: 4.5
   knockbackPower: 34
   modelPrefab: {fileID: 1845945369076765872, guid: f4bab4f7ee24347909b2acf31b548ed5,
     type: 3}
+  useCapsuleVisual: 0
   previewImage: {fileID: 21300000, guid: 60bd89fc611ef4ebfb62b8af45c9a452, type: 3}
   previewPosition: {x: 0, y: 0, z: 0}
   previewRotation: {x: 0, y: 0, z: 0}

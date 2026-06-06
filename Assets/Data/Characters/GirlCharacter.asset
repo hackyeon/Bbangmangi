@@ -12,12 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e30cf5226e8134bbd8c0ed5fbce324f0, type: 3}
   m_Name: GirlCharacter
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
-  id: 0
+  id: 1
   characterName: Girl
   moveSpeed: 8
   knockbackPower: 20
   modelPrefab: {fileID: 1694388104871626409, guid: 3e88ea91856ed423daa864d052327c53,
     type: 3}
+  useCapsuleVisual: 0
   previewImage: {fileID: 21300000, guid: fe13245a06f724f69bcdbf28afe26af9, type: 3}
   previewPosition: {x: 0, y: 0, z: 0}
   previewRotation: {x: 0, y: 0, z: 0}

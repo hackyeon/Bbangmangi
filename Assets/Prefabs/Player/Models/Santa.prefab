@@ -2848,7 +2848,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4751922330993925962}
   - component: {fileID: 3420549815832359472}
-  - component: {fileID: -402264419416216859}
   m_Layer: 0
   m_Name: Santa
   m_TagString: Untagged
@@ -2865,7 +2864,7 @@ Transform:
   m_GameObject: {fileID: 8622530670846373209}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -1, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2895,29 +2894,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!136 &-402264419416216859
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8622530670846373209}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.28405756
-  m_Height: 1.9378002
-  m_Direction: 1
-  m_Center: {x: 0, y: 0.96754277, z: -0.06686488}
 --- !u!1 &8623028791775734088
 GameObject:
   m_ObjectHideFlags: 0

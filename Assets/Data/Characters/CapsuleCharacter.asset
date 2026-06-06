@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e30cf5226e8134bbd8c0ed5fbce324f0, type: 3}
   m_Name: CapsuleCharacter
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
-  id: 3
+  id: 0
   characterName: Capsule
   moveSpeed: 7
   knockbackPower: 25
   modelPrefab: {fileID: 0}
   useCapsuleVisual: 1
-  previewImage: {fileID: 0}
+  previewImage: {fileID: 21300000, guid: 706203f8f031d4be09023c956ea358bd, type: 3}
   previewPosition: {x: 0, y: 0, z: 0}
   previewRotation: {x: 0, y: 0, z: 0}
   previewScale: {x: 1, y: 1, z: 1}
