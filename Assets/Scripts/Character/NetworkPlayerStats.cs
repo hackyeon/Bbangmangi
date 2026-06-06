@@ -5,7 +5,8 @@ public class NetworkPlayerStats : NetworkBehaviour
 {
     public Transform visualRoot;
     public RuntimeAnimatorController animatorController;
-
+    public GameObject capsuleVisual;
+    
     [Networked]
     public int CharacterId { get; set; }
 
@@ -73,6 +74,41 @@ public class NetworkPlayerStats : NetworkBehaviour
         if (visualRoot == null)
             visualRoot = transform.Find("Visual");
 
+        if (capsuleVisual == null)
+        {
+            Transform capsule = transform.Find("CapsuleVisual");
+            if (capsule != null)
+                capsuleVisual = capsule.gameObject;
+        }
+
+        if (character.useCapsuleVisual)
+        {
+            if (visualRoot != null)
+                visualRoot.gameObject.SetActive(false);
+
+            if (capsuleVisual != null)
+                capsuleVisual.SetActive(true);
+
+            NetworkPlayerAnimation playerAnimation =
+                GetComponent<NetworkPlayerAnimation>();
+
+            if (playerAnimation != null)
+            {
+                playerAnimation.animator = null;
+                playerAnimation.capsuleBatAttack =
+                    GetComponentInChildren<CapsuleBatAttack>(true);
+            }
+
+            appliedCharacterId = character.id;
+            return;
+        }
+
+        if (capsuleVisual != null)
+            capsuleVisual.SetActive(false);
+
+        if (visualRoot != null)
+            visualRoot.gameObject.SetActive(true);
+
         if (visualRoot == null || character.modelPrefab == null)
             return;
 
@@ -98,11 +134,14 @@ public class NetworkPlayerStats : NetworkBehaviour
         if (animator != null && animatorController != null)
             animator.runtimeAnimatorController = animatorController;
 
-        NetworkPlayerAnimation playerAnimation =
+        NetworkPlayerAnimation animation =
             GetComponent<NetworkPlayerAnimation>();
 
-        if (playerAnimation != null)
-            playerAnimation.animator = animator;
+        if (animation != null)
+        {
+            animation.animator = animator;
+            animation.capsuleBatAttack = null;
+        }
 
         appliedCharacterId = character.id;
     }

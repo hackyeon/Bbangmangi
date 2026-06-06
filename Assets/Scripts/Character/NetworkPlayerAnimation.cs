@@ -6,7 +6,8 @@ public class NetworkPlayerAnimation : NetworkBehaviour
     public Animator animator;
     public NetworkPlayerMotor motor;
     public KnockbackReceiver knockbackReceiver;
-
+    public CapsuleBatAttack capsuleBatAttack;
+    
     private static readonly int SpeedHash = Animator.StringToHash("Speed");
     private static readonly int IsFallingHash = Animator.StringToHash("IsFalling");
     private static readonly int IsStunnedHash = Animator.StringToHash("IsStunned");
@@ -50,17 +51,21 @@ public class NetworkPlayerAnimation : NetworkBehaviour
     {
         SetupReferences();
 
-        if (animator == null || animator.runtimeAnimatorController == null)
-            return;
-
-        animator.SetFloat(SpeedHash, AnimSpeed);
-        animator.SetBool(IsFallingHash, AnimIsFalling);
-        animator.SetBool(IsStunnedHash, AnimIsStunned);
+        if (animator != null && animator.runtimeAnimatorController != null)
+        {
+            animator.SetFloat(SpeedHash, AnimSpeed);
+            animator.SetBool(IsFallingHash, AnimIsFalling);
+            animator.SetBool(IsStunnedHash, AnimIsStunned);
+        }
 
         if (renderedAttackVersion != AttackVersion)
         {
             renderedAttackVersion = AttackVersion;
-            animator.SetTrigger(AttackHash);
+
+            if (animator != null && animator.runtimeAnimatorController != null)
+                animator.SetTrigger(AttackHash);
+            else if (capsuleBatAttack != null)
+                capsuleBatAttack.PlaySwing();
         }
     }
 
@@ -74,6 +79,9 @@ public class NetworkPlayerAnimation : NetworkBehaviour
 
     private void SetupReferences()
     {
+        if (capsuleBatAttack == null)
+            capsuleBatAttack = GetComponentInChildren<CapsuleBatAttack>(true);
+        
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
 

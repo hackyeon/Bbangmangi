@@ -16,6 +16,9 @@ public class CharacterData : ScriptableObject
     [Header("Prefab")]
     public GameObject modelPrefab;
 
+    [Header("Capsule Character")]
+    public bool useCapsuleVisual;
+
     [Header("UI")]
     public Sprite previewImage;
 
