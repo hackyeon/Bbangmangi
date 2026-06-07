@@ -136,9 +136,10 @@ public class NetworkPlayerStats : NetworkBehaviour
             visualRoot
         );
 
-        currentModel.transform.localPosition = Vector3.zero;
-        currentModel.transform.localRotation = Quaternion.identity;
-        currentModel.transform.localScale = Vector3.one;
+        currentModel.transform.localPosition = character.modelPosition;
+        currentModel.transform.localRotation =
+            Quaternion.Euler(character.modelRotation);
+        currentModel.transform.localScale = character.modelScale;
 
         Animator animator = currentModel.GetComponentInChildren<Animator>();
 

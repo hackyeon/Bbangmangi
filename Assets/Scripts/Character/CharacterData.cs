@@ -16,6 +16,11 @@ public class CharacterData : ScriptableObject
     [Header("Prefab")]
     public GameObject modelPrefab;
 
+    [Header("Gameplay Visual")]
+    public Vector3 modelPosition = new Vector3(0f, -1f, 0f);
+    public Vector3 modelRotation = Vector3.zero;
+    public Vector3 modelScale = Vector3.one;
+
     [Header("Capsule Character")]
     public bool useCapsuleVisual;
 

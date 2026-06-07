@@ -17,6 +17,9 @@ MonoBehaviour:
   moveSpeed: 7
   knockbackPower: 25
   modelPrefab: {fileID: 0}
+  modelPosition: {x: 0, y: 0, z: 0}
+  modelRotation: {x: 0, y: 0, z: 0}
+  modelScale: {x: 1, y: 1, z: 1}
   useCapsuleVisual: 1
   previewImage: {fileID: 21300000, guid: 706203f8f031d4be09023c956ea358bd, type: 3}
   previewPosition: {x: 0, y: 0, z: 0}
