@@ -14,6 +14,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     public MobileJoystick moveJoystick;
     public AttackJoystick attackJoystick;
     public NetworkObject commandPrefab;
+    [SerializeField, Min(0.1f)] private float hostStallNoticeDelay = 0.7f;
     
     private NetworkPlayerCommand localCommand;
     private readonly Dictionary<PlayerRef, NetworkObject> playerCommands = new();
@@ -21,10 +22,20 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     private CharacterSelectUI characterSelectUI;
     
     private const string SessionName = "BbangmangiRoom";
+    private const string HostMigrationMessage =
+        "호스트를 전환하는 중입니다...\n잠시만 기다려 주세요.";
+    private const string HostMigrationFailedMessage =
+        "호스트 전환에 실패했습니다.\n다시 접속해 주세요.";
+
     public static readonly string LocalConnectionId =
         Guid.NewGuid().ToString("N");
 
     public bool IsHostMigrating { get; private set; }
+
+    private Tick lastObservedServerTick;
+    private float lastServerTickAdvanceTime;
+    private bool hasObservedServerTick;
+    private bool isShowingHostStallNotice;
 
     private void Awake()
     {
@@ -34,6 +45,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     public void SetLocalCommand(NetworkPlayerCommand command)
     {
         localCommand = command;
+        ResetHostStallMonitor(false);
     }
     
     async void Start()
@@ -41,6 +53,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         characterSelectUI = FindFirstObjectByType<CharacterSelectUI>();
 
         runner = CreateRunner();
+        ResetHostStallMonitor(false);
 
         if (NetworkGameManager.Instance != null)
             NetworkGameManager.Instance.Initialize(runner);
@@ -63,6 +76,11 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         {
             Debug.LogError($"Fusion 연결 실패: {result.ShutdownReason}");
         }
+    }
+
+    private void Update()
+    {
+        UpdateHostStallNotice();
     }
     
     private void RebuildPlayerCommands()
@@ -221,11 +239,14 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         IsHostMigrating = true;
         localCommand = null;
         playerCommands.Clear();
+        ShowHostMigrationNotice(HostMigrationMessage);
+        ResetHostStallMonitor(false);
 
         await oldRunner.Shutdown(shutdownReason: ShutdownReason.HostMigration);
         Destroy(oldRunner.gameObject);
 
         runner = CreateRunner();
+        ResetHostStallMonitor(false);
         
         if (NetworkGameManager.Instance != null)
             NetworkGameManager.Instance.Initialize(runner);
@@ -242,6 +263,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         {
             Debug.LogWarning($"Host Migration failed: {result.ShutdownReason}");
             IsHostMigrating = false;
+            ShowHostMigrationNotice(HostMigrationFailedMessage);
             return;
         }
 
@@ -249,11 +271,82 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 
         await runner.PushHostMigrationSnapshot();
         StartCoroutine(CleanupDisconnectedPlayersAfterMigration(runner));
+        StartCoroutine(HideHostMigrationNoticeAfterDelay(3.2f));
+    }
+
+    private void ShowHostMigrationNotice(string message)
+    {
+        HostMigrationNoticeUI.GetOrCreate().Show(message);
+    }
+
+    private IEnumerator HideHostMigrationNoticeAfterDelay(float delay)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+        HostMigrationNoticeUI.GetOrCreate().Hide();
+    }
+
+    private void UpdateHostStallNotice()
+    {
+        if (IsHostMigrating)
+            return;
+
+        // Fusion confirms host migration after a timeout, so show feedback as soon as server ticks stall.
+        if (!ShouldWatchForHostStall())
+        {
+            ResetHostStallMonitor(true);
+            return;
+        }
+
+        Tick currentServerTick = runner.LatestServerTick;
+
+        if (!hasObservedServerTick ||
+            !currentServerTick.Equals(lastObservedServerTick))
+        {
+            lastObservedServerTick = currentServerTick;
+            lastServerTickAdvanceTime = Time.unscaledTime;
+            hasObservedServerTick = true;
+
+            if (isShowingHostStallNotice)
+            {
+                isShowingHostStallNotice = false;
+                HostMigrationNoticeUI.GetOrCreate().Hide();
+            }
+
+            return;
+        }
+
+        if (isShowingHostStallNotice)
+            return;
+
+        if (Time.unscaledTime - lastServerTickAdvanceTime < hostStallNoticeDelay)
+            return;
+
+        isShowingHostStallNotice = true;
+        ShowHostMigrationNotice(HostMigrationMessage);
+    }
+
+    private bool ShouldWatchForHostStall()
+    {
+        return runner != null &&
+               runner.IsRunning &&
+               runner.IsClient &&
+               !runner.IsServer &&
+               localCommand != null;
+    }
+
+    private void ResetHostStallMonitor(bool hideStallNotice)
+    {
+        if (hideStallNotice && isShowingHostStallNotice && !IsHostMigrating)
+            HostMigrationNoticeUI.GetOrCreate().Hide();
+
+        hasObservedServerTick = false;
+        lastServerTickAdvanceTime = Time.unscaledTime;
+        isShowingHostStallNotice = false;
     }
 
     private IEnumerator CleanupDisconnectedPlayersAfterMigration(NetworkRunner migrationRunner)
     {
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSecondsRealtime(3f);
 
         if (migrationRunner == null || !migrationRunner.IsRunning || !migrationRunner.IsServer)
             yield break;
