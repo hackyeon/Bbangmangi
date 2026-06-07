@@ -20,7 +20,7 @@ public class NetworkPlayerMotor : NetworkBehaviour
         knockbackReceiver = GetComponent<KnockbackReceiver>();
         batAttack = GetComponent<BatAttack>();
 
-        if (HasInputAuthority)
+        if (HasInputAuthority && BelongsToLocalConnection())
         {
             CameraFollow cameraFollow = Camera.main.GetComponent<CameraFollow>();
             if (cameraFollow != null)
@@ -30,6 +30,12 @@ public class NetworkPlayerMotor : NetworkBehaviour
     
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
+        if (NetworkRunnerManager.Instance != null &&
+            NetworkRunnerManager.Instance.IsHostMigrating)
+        {
+            return;
+        }
+        
         if (Object.InputAuthority == runner.LocalPlayer)
         {
             CharacterSelectUI ui = FindFirstObjectByType<CharacterSelectUI>();
@@ -131,6 +137,19 @@ public class NetworkPlayerMotor : NetworkBehaviour
                 transform.position += push;
             }
         }
+    }
+
+    private bool BelongsToLocalConnection()
+    {
+        NetworkPlayerStats stats = GetComponent<NetworkPlayerStats>();
+
+        if (stats == null)
+            return true;
+
+        string connectionId = stats.ConnectionId.ToString();
+
+        return string.IsNullOrEmpty(connectionId) ||
+               connectionId == NetworkRunnerManager.LocalConnectionId;
     }
 
     private void GroundCheck()

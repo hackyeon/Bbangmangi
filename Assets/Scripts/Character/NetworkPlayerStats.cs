@@ -10,6 +10,9 @@ public class NetworkPlayerStats : NetworkBehaviour
     [Networked]
     public int CharacterId { get; set; }
 
+    [Networked]
+    public NetworkString<_32> ConnectionId { get; set; }
+
     private int appliedCharacterId = -1;
     private GameObject currentModel;
 
@@ -40,6 +43,14 @@ public class NetworkPlayerStats : NetworkBehaviour
             batAttack.knockbackPower = character.knockbackPower;
 
         ApplyVisual(character);
+    }
+
+    public void SetConnectionId(string connectionId)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        ConnectionId = connectionId;
     }
 
     private void ApplyVisualIfNeeded()

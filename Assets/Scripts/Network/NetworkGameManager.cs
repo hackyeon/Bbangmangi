@@ -12,7 +12,8 @@ public class NetworkGameManager : MonoBehaviour
 
     private NetworkRunner runner;
     private readonly Dictionary<PlayerRef, NetworkObject> spawnedPlayers = new();
-
+    private int nextJoinOrder = 1;
+    
     private void Awake()
     {
         Instance = this;
@@ -22,11 +23,53 @@ public class NetworkGameManager : MonoBehaviour
     {
         runner = networkRunner;
     }
+    
+    public void RebuildSpawnedPlayers(NetworkRunner networkRunner)
+    {
+        runner = networkRunner;
+        spawnedPlayers.Clear();
+
+        NetworkPlayerName[] players =
+            FindObjectsByType<NetworkPlayerName>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerName player in players)
+        {
+            if (player == null || player.Object == null)
+                continue;
+
+            spawnedPlayers[player.Object.InputAuthority] = player.Object;
+        }
+    }
+    
+    public int NextJoinOrder()
+    {
+        if (runner == null || !runner.IsServer)
+            return 0;
+
+        int maxJoinOrder = 0;
+
+        NetworkPlayerCommand[] commands =
+            FindObjectsByType<NetworkPlayerCommand>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerCommand command in commands)
+        {
+            if (command == null || command.Object == null)
+                continue;
+
+            maxJoinOrder = Mathf.Max(maxJoinOrder, command.JoinOrder);
+        }
+
+        if (nextJoinOrder <= maxJoinOrder)
+            nextJoinOrder = maxJoinOrder + 1;
+
+        return nextJoinOrder++;
+    }
 
     public void RequestSpawn(
         PlayerRef player,
         string nickname,
-        int characterId
+        int characterId,
+        string connectionId
     )
     {
         if (runner == null || !runner.IsRunning)
@@ -40,7 +83,7 @@ public class NetworkGameManager : MonoBehaviour
         if (character == null)
             return;
 
-        SpawnPlayer(player, nickname, character);
+        SpawnPlayer(player, nickname, character, connectionId);
     }
     
     private CharacterData FindCharacter(int characterId)
@@ -57,7 +100,8 @@ public class NetworkGameManager : MonoBehaviour
     private void SpawnPlayer(
         PlayerRef player,
         string nickname,
-        CharacterData character
+        CharacterData character,
+        string connectionId
     )
     {
         if (spawnedPlayers.ContainsKey(player))
@@ -82,7 +126,10 @@ public class NetworkGameManager : MonoBehaviour
             playerObject.GetComponent<NetworkPlayerStats>();
 
         if (stats != null)
+        {
+            stats.SetConnectionId(connectionId);
             stats.Apply(character);
+        }
     }
 
     public void DespawnPlayer(PlayerRef player)

@@ -1,4 +1,7 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using Fusion;
 using Fusion.Sockets;
 using UnityEngine;
@@ -16,6 +19,12 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     private readonly Dictionary<PlayerRef, NetworkObject> playerCommands = new();
     private NetworkRunner runner;
     private CharacterSelectUI characterSelectUI;
+    
+    private const string SessionName = "BbangmangiRoom";
+    public static readonly string LocalConnectionId =
+        Guid.NewGuid().ToString("N");
+
+    public bool IsHostMigrating { get; private set; }
 
     private void Awake()
     {
@@ -31,29 +40,47 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     {
         characterSelectUI = FindFirstObjectByType<CharacterSelectUI>();
 
-        runner = gameObject.AddComponent<NetworkRunner>();
-        runner.ProvideInput = true;
-        runner.AddCallbacks(this);
+        runner = CreateRunner();
+
+        if (NetworkGameManager.Instance != null)
+            NetworkGameManager.Instance.Initialize(runner);
 
         var result = await runner.StartGame(
             new StartGameArgs()
             {
                 GameMode = GameMode.AutoHostOrClient,
-                SessionName = "BbangmangiRoom",
-                SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
+                SessionName = SessionName,
+                ConnectionToken = GetLocalConnectionToken(),
+                SceneManager = runner.GetComponent<NetworkSceneManagerDefault>()
             });
 
         if (result.Ok)
         {
-            if (NetworkGameManager.Instance != null)
-                NetworkGameManager.Instance.Initialize(runner);
-
             if (characterSelectUI != null)
                 characterSelectUI.SetStartButtonEnabled(true);
         }
         else
         {
             Debug.LogError($"Fusion 연결 실패: {result.ShutdownReason}");
+        }
+    }
+    
+    private void RebuildPlayerCommands()
+    {
+        playerCommands.Clear();
+
+        NetworkPlayerCommand[] commands =
+            FindObjectsByType<NetworkPlayerCommand>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerCommand command in commands)
+        {
+            if (command == null || command.Object == null)
+                continue;
+
+            playerCommands[command.Object.InputAuthority] = command.Object;
+
+            if (command.HasInputAuthority)
+                localCommand = command;
         }
     }
 
@@ -132,6 +159,50 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         
         input.Set(data);
     }
+    
+    private NetworkRunner CreateRunner()
+    {
+        GameObject runnerObject = new GameObject("FusionRunner");
+        runnerObject.transform.SetParent(transform);
+
+        NetworkRunner newRunner = runnerObject.AddComponent<NetworkRunner>();
+        newRunner.ProvideInput = true;
+        newRunner.AddCallbacks(this);
+        runnerObject.AddComponent<NetworkSceneManagerDefault>();
+
+        return newRunner;
+    }
+    
+    private void HostMigrationResume(NetworkRunner migrationRunner)
+    {
+        foreach (NetworkObject resumeObject in migrationRunner.GetResumeSnapshotNetworkObjects())
+        {
+            PlayerRef inputAuthority = resumeObject.InputAuthority;
+
+            Vector3 position = resumeObject.transform.position;
+            Quaternion rotation = resumeObject.transform.rotation;
+
+            if (resumeObject.TryGetBehaviour<NetworkTRSP>(out var trsp))
+            {
+                position = trsp.Data.Position;
+                rotation = trsp.Data.Rotation;
+            }
+
+            migrationRunner.Spawn(
+                resumeObject,
+                position,
+                rotation,
+                inputAuthority,
+                onBeforeSpawned: (_, newObject) =>
+                {
+                    newObject.CopyStateFrom(resumeObject);
+                }
+            );
+        }
+
+        NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
+        RebuildPlayerCommands();
+    }
 
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
@@ -142,7 +213,143 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
     public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
-    public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
+    public async void OnHostMigration(
+        NetworkRunner oldRunner,
+        HostMigrationToken hostMigrationToken
+    )
+    {
+        IsHostMigrating = true;
+        localCommand = null;
+        playerCommands.Clear();
+
+        await oldRunner.Shutdown(shutdownReason: ShutdownReason.HostMigration);
+        Destroy(oldRunner.gameObject);
+
+        runner = CreateRunner();
+        
+        if (NetworkGameManager.Instance != null)
+            NetworkGameManager.Instance.Initialize(runner);
+
+        StartGameResult result = await runner.StartGame(new StartGameArgs()
+        {
+            HostMigrationToken = hostMigrationToken,
+            HostMigrationResume = HostMigrationResume,
+            ConnectionToken = GetLocalConnectionToken(),
+            SceneManager = runner.GetComponent<NetworkSceneManagerDefault>()
+        });
+
+        if (!result.Ok)
+        {
+            Debug.LogWarning($"Host Migration failed: {result.ShutdownReason}");
+            IsHostMigrating = false;
+            return;
+        }
+
+        IsHostMigrating = false;
+
+        await runner.PushHostMigrationSnapshot();
+        StartCoroutine(CleanupDisconnectedPlayersAfterMigration(runner));
+    }
+
+    private IEnumerator CleanupDisconnectedPlayersAfterMigration(NetworkRunner migrationRunner)
+    {
+        yield return new WaitForSeconds(3f);
+
+        if (migrationRunner == null || !migrationRunner.IsRunning || !migrationRunner.IsServer)
+            yield break;
+
+        HashSet<PlayerRef> activePlayers = new();
+        HashSet<string> activeConnectionIds = new();
+
+        foreach (PlayerRef player in migrationRunner.CommittedPlayers)
+        {
+            activePlayers.Add(player);
+            string connectionId =
+                GetConnectionId(migrationRunner.GetPlayerConnectionToken(player));
+
+            if (!string.IsNullOrEmpty(connectionId))
+                activeConnectionIds.Add(connectionId);
+        }
+
+        activeConnectionIds.Add(LocalConnectionId);
+
+        IsHostMigrating = true;
+
+        NetworkPlayerStats[] players =
+            FindObjectsByType<NetworkPlayerStats>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerStats player in players)
+        {
+            if (player == null || player.Object == null)
+                continue;
+
+            PlayerRef inputAuthority = player.Object.InputAuthority;
+            string connectionId = player.ConnectionId.ToString();
+
+            if (IsConnectedPlayer(
+                    connectionId,
+                    inputAuthority,
+                    activeConnectionIds,
+                    activePlayers))
+                continue;
+
+            migrationRunner.Despawn(player.Object);
+        }
+
+        NetworkPlayerCommand[] commands =
+            FindObjectsByType<NetworkPlayerCommand>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerCommand command in commands)
+        {
+            if (command == null || command.Object == null)
+                continue;
+
+            PlayerRef inputAuthority = command.Object.InputAuthority;
+            string connectionId = command.ConnectionId.ToString();
+
+            if (IsConnectedPlayer(
+                    connectionId,
+                    inputAuthority,
+                    activeConnectionIds,
+                    activePlayers))
+                continue;
+
+            migrationRunner.Despawn(command.Object);
+            playerCommands.Remove(inputAuthority);
+        }
+
+        IsHostMigrating = false;
+        NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
+        RebuildPlayerCommands();
+    }
+
+    private static byte[] GetLocalConnectionToken()
+    {
+        return Encoding.UTF8.GetBytes(LocalConnectionId);
+    }
+
+    private static string GetConnectionId(byte[] connectionToken)
+    {
+        if (connectionToken == null || connectionToken.Length == 0)
+            return "";
+
+        return Encoding.UTF8.GetString(connectionToken);
+    }
+
+    private static bool IsConnectedPlayer(
+        string connectionId,
+        PlayerRef inputAuthority,
+        HashSet<string> activeConnectionIds,
+        HashSet<PlayerRef> activePlayers
+    )
+    {
+        if (!string.IsNullOrEmpty(connectionId))
+            return activeConnectionIds.Contains(connectionId);
+
+        return inputAuthority != PlayerRef.None &&
+               activePlayers.Contains(inputAuthority);
+    }
+
     public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
     public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
     public void OnSceneLoadDone(NetworkRunner runner) { }
