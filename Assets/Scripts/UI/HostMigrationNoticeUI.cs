@@ -150,7 +150,7 @@ public class HostMigrationNoticeUI : MonoBehaviour
         messageText.color = Color.white;
         messageText.fontSize = 28f;
         messageText.raycastTarget = false;
-        messageText.enableWordWrapping = true;
+        messageText.textWrappingMode = TextWrappingModes.Normal;
     }
 
     private static TMP_FontAsset FindNoticeFont()
