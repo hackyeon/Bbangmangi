@@ -19,13 +19,11 @@ public class NetworkPlayerAnimation : NetworkBehaviour
     [Networked] private int AttackVersion { get; set; }
 
     private int renderedAttackVersion;
-    private Vector3 lastNetworkPosition;
 
     public override void Spawned()
     {
         SetupReferences();
 
-        lastNetworkPosition = transform.position;
         renderedAttackVersion = AttackVersion;
     }
 
@@ -34,17 +32,13 @@ public class NetworkPlayerAnimation : NetworkBehaviour
         if (!HasStateAuthority)
             return;
 
-        Vector3 currentPosition = transform.position;
-        Vector3 delta = currentPosition - lastNetworkPosition;
-        delta.y = 0f;
-
-        AnimSpeed =
-            delta.magnitude / Mathf.Max(Runner.DeltaTime, 0.0001f);
-
         AnimIsFalling = motor != null && !motor.IsGrounded;
         AnimIsStunned = knockbackReceiver != null && knockbackReceiver.IsStunned;
 
-        lastNetworkPosition = currentPosition;
+        AnimSpeed = 0f;
+
+        if (!AnimIsStunned && GetInput(out BbangmangiInputData input))
+            AnimSpeed = Mathf.Clamp01(input.MoveDirection.magnitude);
     }
 
     public override void Render()
