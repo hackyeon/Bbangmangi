@@ -5,7 +5,6 @@ using UnityEngine;
 public class NetworkBotAI : MonoBehaviour
 {
     [SerializeField] private float targetSearchRange = 18f;
-    [SerializeField] private float userPriorityRange = 12f;
     [SerializeField] private float attackDistance = 2.8f;
     [SerializeField] private float stopDistance = 1.6f;
     [SerializeField] private float returnToCenterDistance = 16f;
@@ -117,11 +116,8 @@ public class NetworkBotAI : MonoBehaviour
         NetworkPlayerStats[] players =
             FindObjectsByType<NetworkPlayerStats>(FindObjectsSortMode.None);
 
-        NetworkPlayerStats closestUser = null;
         NetworkPlayerStats closestCharacter = null;
-        float closestUserDistance = float.MaxValue;
         float closestCharacterDistance = float.MaxValue;
-        float userPrioritySqr = userPriorityRange * userPriorityRange;
         float targetSearchSqr = targetSearchRange * targetSearchRange;
 
         foreach (NetworkPlayerStats candidate in players)
@@ -138,18 +134,7 @@ public class NetworkBotAI : MonoBehaviour
                 closestCharacterDistance = sqrDistance;
                 closestCharacter = candidate;
             }
-
-            if (!candidate.IsBot &&
-                sqrDistance <= userPrioritySqr &&
-                sqrDistance < closestUserDistance)
-            {
-                closestUserDistance = sqrDistance;
-                closestUser = candidate;
-            }
         }
-
-        if (closestUser != null)
-            return closestUser.transform;
 
         return closestCharacter != null ? closestCharacter.transform : null;
     }
