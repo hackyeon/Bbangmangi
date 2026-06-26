@@ -1,10 +1,6 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using System;
-using System.IO;
-using System.Reflection;
 
 [CustomEditor(typeof(Readme))]
 [InitializeOnLoad]
@@ -28,18 +24,10 @@ public class ReadmeEditor : Editor {
 			
 			if (readme && !readme.loadedLayout)
 			{
-				LoadLayout();
 				readme.loadedLayout = true;
+				EditorUtility.SetDirty(readme);
 			}
-		} 
-	}
-	
-	static void LoadLayout()
-	{
-		var assembly = typeof(EditorApplication).Assembly; 
-		var windowLayoutType = assembly.GetType("UnityEditor.WindowLayout", true);
-		var method = windowLayoutType.GetMethod("LoadWindowLayout", BindingFlags.Public | BindingFlags.Static);
-		method.Invoke(null, new object[]{Path.Combine(Application.dataPath, "»Readme/Layout.wlt"), false});
+		}
 	}
 	
 	[MenuItem("Help/Project Readme")]
@@ -156,4 +144,3 @@ public class ReadmeEditor : Editor {
 		return GUI.Button (position, label, LinkStyle);
 	}
 }
-

@@ -31,13 +31,7 @@ MonoBehaviour:
     linkText: 
     url: 
   - heading: ✓ Polycount
-    text: "
-- body_arms | 1496 Tris\n
-- body_head | 614 Tris\n
-- body_legs | 2160 Tris\n
-- body_torso | 1552 Tris\n
-- shield_wood | 268 Tris\n
-- sword_wood | 204 Tris"
+    text: "- body_arms | 1496 Tris\n- body_head | 614 Tris\n- body_legs | 2160 Tris\n- body_torso | 1552 Tris\n- shield_wood | 268 Tris\n- sword_wood | 204 Tris"
     linkText: 
     url: 
   - heading: ✓ Blendshapes
