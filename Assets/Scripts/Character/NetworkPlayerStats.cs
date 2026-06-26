@@ -34,17 +34,20 @@ public class NetworkPlayerStats : NetworkBehaviour
 
     private int appliedCharacterId = -1;
     private GameObject currentModel;
+    private NetworkKillScaleVisual killScaleVisual;
 
     public override void Spawned()
     {
         ApplyVisualIfNeeded();
         ApplyRuntimeStats();
+        ApplyKillScale();
     }
 
     public override void Render()
     {
         ApplyVisualIfNeeded();
         ApplyRuntimeStats();
+        ApplyKillScale();
     }
 
     public void Apply(CharacterData character)
@@ -184,6 +187,7 @@ public class NetworkPlayerStats : NetworkBehaviour
                     GetComponentInChildren<CapsuleBatAttack>(true);
             }
 
+            ConfigureKillScale(character, capsuleVisual);
             appliedCharacterId = character.id;
             return;
         }
@@ -229,6 +233,30 @@ public class NetworkPlayerStats : NetworkBehaviour
             animation.capsuleBatAttack = null;
         }
 
+        ConfigureKillScale(character, currentModel);
         appliedCharacterId = character.id;
+    }
+
+    private void ConfigureKillScale(CharacterData character, GameObject visualObject)
+    {
+        NetworkKillScaleVisual scaleVisual = GetKillScaleVisual();
+        scaleVisual.Configure(character, visualObject);
+    }
+
+    private void ApplyKillScale()
+    {
+        if (killScaleVisual != null)
+            killScaleVisual.ApplyCurrentScale();
+    }
+
+    private NetworkKillScaleVisual GetKillScaleVisual()
+    {
+        if (killScaleVisual == null)
+            killScaleVisual = GetComponent<NetworkKillScaleVisual>();
+
+        if (killScaleVisual == null)
+            killScaleVisual = gameObject.AddComponent<NetworkKillScaleVisual>();
+
+        return killScaleVisual;
     }
 }

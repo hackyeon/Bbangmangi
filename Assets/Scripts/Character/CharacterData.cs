@@ -21,6 +21,9 @@ public class CharacterData : ScriptableObject
     public Vector3 modelRotation = Vector3.zero;
     public Vector3 modelScale = Vector3.one;
 
+    [Header("Kill Scale")]
+    public string[] killScaleTargetNames;
+
     [Header("Capsule Character")]
     public bool useCapsuleVisual;
 
