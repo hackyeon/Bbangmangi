@@ -36,6 +36,7 @@ public class NetworkGameManager : MonoBehaviour
     private NetworkRunner runner;
     private readonly Dictionary<PlayerRef, NetworkObject> spawnedPlayers = new();
     private readonly List<NetworkObject> spawnedBots = new();
+    private readonly HashSet<string> reservedBotNames = new();
     private int nextJoinOrder = 1;
     private int pendingBotRespawns;
     private float nextBotCheckTime;
@@ -70,6 +71,7 @@ public class NetworkGameManager : MonoBehaviour
         runner = networkRunner;
         spawnedPlayers.Clear();
         spawnedBots.Clear();
+        reservedBotNames.Clear();
 
         NetworkPlayerStats[] players =
             FindObjectsByType<NetworkPlayerStats>(FindObjectsSortMode.None);
@@ -82,6 +84,7 @@ public class NetworkGameManager : MonoBehaviour
             if (player.IsBot)
             {
                 spawnedBots.Add(player.Object);
+                ReserveExistingBotName(player.Object);
                 EnsureBotController(player.Object);
                 continue;
             }
@@ -228,6 +231,8 @@ public class NetworkGameManager : MonoBehaviour
         if (character == null)
             return false;
 
+        string botName = GetBotName();
+
         NetworkObject botObject = runner.Spawn(
             playerPrefab,
             GetSpawnPosition(),
@@ -236,10 +241,13 @@ public class NetworkGameManager : MonoBehaviour
         );
 
         if (botObject == null)
+        {
+            reservedBotNames.Remove(botName);
             return false;
+        }
 
         spawnedBots.Add(botObject);
-        ConfigureCharacter(botObject, GetBotName(), character, "", true);
+        ConfigureCharacter(botObject, botName, character, "", true);
         EnsureBotController(botObject);
         return true;
     }
@@ -275,6 +283,7 @@ public class NetworkGameManager : MonoBehaviour
     private void DespawnBot(NetworkObject botObject)
     {
         spawnedBots.Remove(botObject);
+        ReleaseBotName(botObject);
 
         if (botObject != null && botObject.IsValid)
             runner.Despawn(botObject);
@@ -399,7 +408,10 @@ public class NetworkGameManager : MonoBehaviour
             NetworkObject botObject = spawnedBots[i];
 
             if (botObject == null || !botObject.IsValid)
+            {
+                ReleaseBotName(botObject);
                 spawnedBots.RemoveAt(i);
+            }
         }
     }
 
@@ -461,18 +473,102 @@ public class NetworkGameManager : MonoBehaviour
 
     private string GetBotName()
     {
-        if (botNames == null || botNames.Length == 0)
-            return "망치봇";
+        const string fallbackName = "망치봇";
 
-        for (int i = 0; i < 12; i++)
+        if (botNames != null && botNames.Length > 0)
         {
-            string nickname = botNames[Random.Range(0, botNames.Length)];
+            int startIndex = Random.Range(0, botNames.Length);
 
-            if (!IsNicknameInUse(nickname))
+            for (int i = 0; i < botNames.Length; i++)
+            {
+                string nickname = botNames[(startIndex + i) % botNames.Length];
+
+                if (TryReserveBotName(nickname))
+                    return nickname;
+            }
+        }
+
+        string baseName = GetFallbackBotNameBase(fallbackName);
+
+        for (int suffix = 2; suffix < 1000; suffix++)
+        {
+            string nickname = $"{baseName}{suffix}";
+
+            if (TryReserveBotName(nickname))
                 return nickname;
         }
 
-        return $"{botNames[Random.Range(0, botNames.Length)]}{Random.Range(10, 99)}";
+        for (int suffix = 1000; suffix < 10000; suffix++)
+        {
+            string nickname = $"{fallbackName}{suffix}";
+
+            if (TryReserveBotName(nickname))
+                return nickname;
+        }
+
+        reservedBotNames.Add(fallbackName);
+        return fallbackName;
+    }
+
+    private string GetFallbackBotNameBase(string fallbackName)
+    {
+        if (botNames == null)
+            return fallbackName;
+
+        foreach (string botName in botNames)
+        {
+            if (!string.IsNullOrWhiteSpace(botName))
+                return botName.Trim();
+        }
+
+        return fallbackName;
+    }
+
+    private bool TryReserveBotName(string nickname)
+    {
+        if (string.IsNullOrWhiteSpace(nickname))
+            return false;
+
+        nickname = nickname.Trim();
+
+        if (reservedBotNames.Contains(nickname) || IsNicknameInUse(nickname))
+            return false;
+
+        reservedBotNames.Add(nickname);
+        return true;
+    }
+
+    private void ReserveExistingBotName(NetworkObject botObject)
+    {
+        NetworkPlayerName playerName = GetPlayerName(botObject);
+
+        if (playerName == null)
+            return;
+
+        string nickname = playerName.Nickname.ToString();
+
+        if (!string.IsNullOrWhiteSpace(nickname))
+            reservedBotNames.Add(nickname.Trim());
+    }
+
+    private void ReleaseBotName(NetworkObject botObject)
+    {
+        NetworkPlayerName playerName = GetPlayerName(botObject);
+
+        if (playerName == null)
+            return;
+
+        string nickname = playerName.Nickname.ToString();
+
+        if (!string.IsNullOrWhiteSpace(nickname))
+            reservedBotNames.Remove(nickname.Trim());
+    }
+
+    private static NetworkPlayerName GetPlayerName(NetworkObject playerObject)
+    {
+        return playerObject != null
+            ? playerObject.GetComponent<NetworkPlayerName>()
+            : null;
     }
 
     private bool IsNicknameInUse(string nickname)
