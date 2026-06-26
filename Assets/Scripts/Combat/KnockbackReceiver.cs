@@ -8,6 +8,8 @@ public class KnockbackReceiver : NetworkBehaviour
     public float stopSpeed = 0.05f;
 
     public bool IsStunned => isStunned;
+    public NetworkObject LastAttackerObject { get; private set; }
+    public float LastHitAge => Time.time - lastHitTime;
 
     [Networked] public PlayerRef LastAttacker { get; private set; }
     [Networked] private NetworkBool isStunned { get; set; }
@@ -15,18 +17,25 @@ public class KnockbackReceiver : NetworkBehaviour
     [Networked] private TickTimer StunTimer { get; set; }
 
     private HitFlash hitFlash;
+    private float lastHitTime = -999f;
 
     public override void Spawned()
     {
         hitFlash = GetComponent<HitFlash>();
     }
 
-    public void ApplyKnockback(Vector3 velocity, PlayerRef attacker)
+    public void ApplyKnockback(
+        Vector3 velocity,
+        PlayerRef attacker,
+        NetworkObject attackerObject = null
+    )
     {
         if (!HasStateAuthority)
             return;
 
         LastAttacker = attacker;
+        LastAttackerObject = attackerObject;
+        lastHitTime = Time.time;
         KnockbackVelocity = velocity;
         StunTimer = TickTimer.CreateFromSeconds(Runner, stunDuration);
         isStunned = true;
@@ -59,6 +68,7 @@ public class KnockbackReceiver : NetworkBehaviour
             return;
 
         LastAttacker = PlayerRef.None;
+        LastAttackerObject = null;
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

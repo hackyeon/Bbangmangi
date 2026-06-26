@@ -10,10 +10,14 @@ public class NetworkPlayerMotor : NetworkBehaviour
     public float playerRadius = 0.5f;
     public LayerMask groundLayer;
     public bool IsGrounded { get; private set; }
+    public Vector2 CurrentMoveInput { get; private set; }
     
     private float verticalVelocity;
     private KnockbackReceiver knockbackReceiver;
     private BatAttack batAttack;
+    private Vector2 botMoveInput;
+    private Vector3 botLookDirection;
+    private bool botAttackPressed;
 
     public override void Spawned()
     {
@@ -60,7 +64,13 @@ public class NetworkPlayerMotor : NetworkBehaviour
         Vector2 moveInput = Vector2.zero;
         bool attackPressed = false;
 
-        if (GetInput(out BbangmangiInputData input))
+        if (IsBotControlled())
+        {
+            moveInput = botMoveInput;
+            attackPressed = botAttackPressed;
+            botAttackPressed = false;
+        }
+        else if (GetInput(out BbangmangiInputData input))
         {
             moveInput = input.MoveDirection;
             attackPressed = input.AttackPressed;
@@ -74,6 +84,8 @@ public class NetworkPlayerMotor : NetworkBehaviour
             moveInput = Vector2.zero;
             attackPressed = false;
         }
+
+        CurrentMoveInput = moveInput;
 
         Vector3 move = new Vector3(moveInput.x, 0f, moveInput.y);
 
@@ -96,9 +108,33 @@ public class NetworkPlayerMotor : NetworkBehaviour
         
         if (move.sqrMagnitude > 0.001f)
             transform.forward = move;
+        else if (botLookDirection.sqrMagnitude > 0.001f)
+            transform.forward = botLookDirection.normalized;
 
         if (attackPressed && batAttack != null)
             batAttack.Attack();
+    }
+
+    public void SetBotInput(
+        Vector2 moveDirection,
+        bool attackPressed,
+        Vector3 lookDirection
+    )
+    {
+        if (!HasStateAuthority)
+            return;
+
+        if (!IsBotControlled())
+            return;
+
+        if (moveDirection.sqrMagnitude > 1f)
+            moveDirection.Normalize();
+
+        lookDirection.y = 0f;
+
+        botMoveInput = moveDirection;
+        botAttackPressed |= attackPressed;
+        botLookDirection = lookDirection;
     }
     
     private void ResolvePlayerOverlap()
@@ -161,6 +197,12 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         return string.IsNullOrEmpty(connectionId) ||
                connectionId == NetworkRunnerManager.LocalConnectionId;
+    }
+
+    private bool IsBotControlled()
+    {
+        NetworkPlayerStats stats = GetComponent<NetworkPlayerStats>();
+        return stats != null && stats.IsBot;
     }
 
     private static CameraFollow FindCameraFollow()

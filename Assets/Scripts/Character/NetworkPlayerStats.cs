@@ -3,6 +3,13 @@ using UnityEngine;
 
 public class NetworkPlayerStats : NetworkBehaviour
 {
+    private const float MoveSpeedReward = 2f;
+    private const float MaxMoveSpeed = 20f;
+    private const float KnockbackPowerReward = 5f;
+    private const float MaxKnockbackPower = 100f;
+    private const float AttackRangeReward = 0.25f;
+    private const float MaxAttackRange = 4.2f;
+
     public Transform visualRoot;
     public RuntimeAnimatorController animatorController;
     public GameObject capsuleVisual;
@@ -13,17 +20,31 @@ public class NetworkPlayerStats : NetworkBehaviour
     [Networked]
     public NetworkString<_32> ConnectionId { get; set; }
 
+    [Networked]
+    public NetworkBool IsBot { get; private set; }
+
+    [Networked]
+    public float CurrentMoveSpeed { get; private set; }
+
+    [Networked]
+    public float CurrentKnockbackPower { get; private set; }
+
+    [Networked]
+    public float CurrentAttackRange { get; private set; }
+
     private int appliedCharacterId = -1;
     private GameObject currentModel;
 
     public override void Spawned()
     {
         ApplyVisualIfNeeded();
+        ApplyRuntimeStats();
     }
 
     public override void Render()
     {
         ApplyVisualIfNeeded();
+        ApplyRuntimeStats();
     }
 
     public void Apply(CharacterData character)
@@ -36,13 +57,22 @@ public class NetworkPlayerStats : NetworkBehaviour
         NetworkPlayerMotor motor = GetComponent<NetworkPlayerMotor>();
         BatAttack batAttack = GetComponent<BatAttack>();
 
-        if (motor != null)
-            motor.moveSpeed = character.moveSpeed;
+        CurrentMoveSpeed = character.moveSpeed;
+        CurrentKnockbackPower = character.knockbackPower;
 
         if (batAttack != null)
-            batAttack.knockbackPower = character.knockbackPower;
+            CurrentAttackRange = batAttack.attackRange;
 
+        ApplyRuntimeStats();
         ApplyVisual(character);
+    }
+
+    public void SetBot(bool isBot)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        IsBot = isBot;
     }
 
     public void SetConnectionId(string connectionId)
@@ -51,6 +81,50 @@ public class NetworkPlayerStats : NetworkBehaviour
             return;
 
         ConnectionId = connectionId;
+    }
+
+    public void ApplyRandomKillReward()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        int rewardIndex = Random.Range(0, 3);
+
+        switch (rewardIndex)
+        {
+            case 0:
+                CurrentMoveSpeed =
+                    Mathf.Min(CurrentMoveSpeed + MoveSpeedReward, MaxMoveSpeed);
+                break;
+            case 1:
+                CurrentKnockbackPower =
+                    Mathf.Min(CurrentKnockbackPower + KnockbackPowerReward, MaxKnockbackPower);
+                break;
+            default:
+                CurrentAttackRange =
+                    Mathf.Min(CurrentAttackRange + AttackRangeReward, MaxAttackRange);
+                break;
+        }
+
+        ApplyRuntimeStats();
+    }
+
+    private void ApplyRuntimeStats()
+    {
+        NetworkPlayerMotor motor = GetComponent<NetworkPlayerMotor>();
+        BatAttack batAttack = GetComponent<BatAttack>();
+
+        if (motor != null && CurrentMoveSpeed > 0f)
+            motor.moveSpeed = CurrentMoveSpeed;
+
+        if (batAttack != null)
+        {
+            if (CurrentKnockbackPower > 0f)
+                batAttack.knockbackPower = CurrentKnockbackPower;
+
+            if (CurrentAttackRange > 0f)
+                batAttack.attackRange = CurrentAttackRange;
+        }
     }
 
     private void ApplyVisualIfNeeded()

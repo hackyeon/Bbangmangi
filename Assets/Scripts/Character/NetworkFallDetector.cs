@@ -19,43 +19,8 @@ public class NetworkFallDetector : NetworkBehaviour
 
         if (transform.position.y < fallY)
         {
-            GiveKillToLastAttacker();
-
             if (NetworkGameManager.Instance != null)
-                NetworkGameManager.Instance.DespawnPlayer(Object.InputAuthority);
+                NetworkGameManager.Instance.HandleCharacterFall(Object, knockbackReceiver);
         }
-    }
-
-    private void GiveKillToLastAttacker()
-    {
-        if (knockbackReceiver == null)
-            return;
-
-        PlayerRef attacker = knockbackReceiver.LastAttacker;
-
-        if (attacker == PlayerRef.None)
-            return;
-
-        if (attacker == Object.InputAuthority)
-            return;
-
-        NetworkPlayerScore[] players =
-            FindObjectsByType<NetworkPlayerScore>(
-                FindObjectsSortMode.None
-            );
-
-        foreach (NetworkPlayerScore player in players)
-        {
-            if (player == null || player.Object == null)
-                continue;
-
-            if (player.Object.InputAuthority == attacker)
-            {
-                player.AddKill();
-                break;
-            }
-        }
-
-        knockbackReceiver.ClearLastAttacker();
     }
 }

@@ -37,8 +37,14 @@ public class NetworkPlayerAnimation : NetworkBehaviour
 
         AnimSpeed = 0f;
 
-        if (!AnimIsStunned && GetInput(out BbangmangiInputData input))
+        if (!AnimIsStunned && motor != null)
+        {
+            AnimSpeed = Mathf.Clamp01(motor.CurrentMoveInput.magnitude);
+        }
+        else if (!AnimIsStunned && GetInput(out BbangmangiInputData input))
+        {
             AnimSpeed = Mathf.Clamp01(input.MoveDirection.magnitude);
+        }
     }
 
     public override void Render()

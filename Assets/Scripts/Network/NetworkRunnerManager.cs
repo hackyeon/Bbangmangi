@@ -379,6 +379,9 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             if (player == null || player.Object == null)
                 continue;
 
+            if (player.IsBot)
+                continue;
+
             PlayerRef inputAuthority = player.Object.InputAuthority;
             string connectionId = player.ConnectionId.ToString();
 
