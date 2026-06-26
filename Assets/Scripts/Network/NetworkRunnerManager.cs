@@ -133,6 +133,9 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
+        if (IsHostMigrating)
+            return;
+
         if (NetworkGameManager.Instance != null)
             NetworkGameManager.Instance.DespawnPlayer(player);
 
@@ -218,7 +221,9 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             );
         }
 
-        NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
+        if (NetworkGameManager.Instance != null)
+            NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
+
         RebuildPlayerCommands();
     }
 
@@ -366,8 +371,6 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 
         activeConnectionIds.Add(LocalConnectionId);
 
-        IsHostMigrating = true;
-
         NetworkPlayerStats[] players =
             FindObjectsByType<NetworkPlayerStats>(FindObjectsSortMode.None);
 
@@ -411,8 +414,9 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             playerCommands.Remove(inputAuthority);
         }
 
-        IsHostMigrating = false;
-        NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
+        if (NetworkGameManager.Instance != null)
+            NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
+
         RebuildPlayerCommands();
     }
 

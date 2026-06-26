@@ -22,7 +22,7 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         if (HasInputAuthority && BelongsToLocalConnection())
         {
-            CameraFollow cameraFollow = Camera.main.GetComponent<CameraFollow>();
+            CameraFollow cameraFollow = FindCameraFollow();
             if (cameraFollow != null)
                 cameraFollow.target = transform;
         }
@@ -46,7 +46,7 @@ public class NetworkPlayerMotor : NetworkBehaviour
                 ui.SetStartButtonEnabled(true);
             }
 
-            CameraFollow cameraFollow = Camera.main.GetComponent<CameraFollow>();
+            CameraFollow cameraFollow = FindCameraFollow();
             if (cameraFollow != null)
                 cameraFollow.target = null;
         }
@@ -54,6 +54,9 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        if (!HasStateAuthority)
+            return;
+
         Vector2 moveInput = Vector2.zero;
         bool attackPressed = false;
 
@@ -65,6 +68,12 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         if (moveInput.sqrMagnitude > 1f)
             moveInput.Normalize();
+
+        if (knockbackReceiver != null && knockbackReceiver.IsStunned)
+        {
+            moveInput = Vector2.zero;
+            attackPressed = false;
+        }
 
         Vector3 move = new Vector3(moveInput.x, 0f, moveInput.y);
 
@@ -97,7 +106,9 @@ public class NetworkPlayerMotor : NetworkBehaviour
         Collider[] hits =
             Physics.OverlapSphere(
                 transform.position,
-                playerRadius
+                playerRadius,
+                ~0,
+                QueryTriggerInteraction.Ignore
             );
 
         foreach (Collider hit in hits)
@@ -106,9 +117,9 @@ public class NetworkPlayerMotor : NetworkBehaviour
                 continue;
 
             NetworkPlayerMotor other =
-                hit.GetComponent<NetworkPlayerMotor>();
+                hit.GetComponentInParent<NetworkPlayerMotor>();
 
-            if (other == null)
+            if (other == null || other == this)
                 continue;
 
             Vector3 dir =
@@ -150,6 +161,16 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         return string.IsNullOrEmpty(connectionId) ||
                connectionId == NetworkRunnerManager.LocalConnectionId;
+    }
+
+    private static CameraFollow FindCameraFollow()
+    {
+        Camera mainCamera = Camera.main;
+
+        if (mainCamera == null)
+            return null;
+
+        return mainCamera.GetComponent<CameraFollow>();
     }
 
     private void GroundCheck()

@@ -5,12 +5,15 @@ public class KnockbackReceiver : NetworkBehaviour
 {
     public float stunDuration = 0.55f;
     public float damping = 3f;
+    public float stopSpeed = 0.05f;
 
-    public bool IsStunned { get; private set; }
-    public PlayerRef LastAttacker { get; private set; }
+    public bool IsStunned => isStunned;
 
-    private Vector3 knockbackVelocity;
-    private float stunTimer;
+    [Networked] public PlayerRef LastAttacker { get; private set; }
+    [Networked] private NetworkBool isStunned { get; set; }
+    [Networked] private Vector3 KnockbackVelocity { get; set; }
+    [Networked] private TickTimer StunTimer { get; set; }
+
     private HitFlash hitFlash;
 
     public override void Spawned()
@@ -24,33 +27,46 @@ public class KnockbackReceiver : NetworkBehaviour
             return;
 
         LastAttacker = attacker;
-        knockbackVelocity = velocity;
-        stunTimer = stunDuration;
-        IsStunned = true;
+        KnockbackVelocity = velocity;
+        StunTimer = TickTimer.CreateFromSeconds(Runner, stunDuration);
+        isStunned = true;
 
-        hitFlash?.Flash();
+        RPC_PlayHitFlash();
     }
 
     public Vector3 ConsumeVelocity(float deltaTime)
     {
-        if (stunTimer > 0f)
-            stunTimer -= deltaTime;
-        else
-            IsStunned = false;
+        if (StunTimer.ExpiredOrNotRunning(Runner))
+            isStunned = false;
 
-        Vector3 result = knockbackVelocity;
+        Vector3 result = KnockbackVelocity;
 
-        knockbackVelocity = Vector3.Lerp(
-            knockbackVelocity,
+        KnockbackVelocity = Vector3.Lerp(
+            KnockbackVelocity,
             Vector3.zero,
             damping * deltaTime
         );
+
+        if (KnockbackVelocity.sqrMagnitude <= stopSpeed * stopSpeed)
+            KnockbackVelocity = Vector3.zero;
 
         return result;
     }
 
     public void ClearLastAttacker()
     {
+        if (!HasStateAuthority)
+            return;
+
         LastAttacker = PlayerRef.None;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    public void RPC_PlayHitFlash()
+    {
+        if (hitFlash == null)
+            hitFlash = GetComponent<HitFlash>();
+
+        hitFlash?.Flash();
     }
 }

@@ -20,7 +20,9 @@ public class NetworkFallDetector : NetworkBehaviour
         if (transform.position.y < fallY)
         {
             GiveKillToLastAttacker();
-            NetworkGameManager.Instance.DespawnPlayer(Object.InputAuthority);
+
+            if (NetworkGameManager.Instance != null)
+                NetworkGameManager.Instance.DespawnPlayer(Object.InputAuthority);
         }
     }
 

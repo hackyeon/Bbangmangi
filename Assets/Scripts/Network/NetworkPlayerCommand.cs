@@ -13,7 +13,7 @@ public class NetworkPlayerCommand : NetworkBehaviour
         HostScore = Mathf.Clamp(score, 0, 10000);
         ConnectionId = connectionId;
 
-        if (JoinOrder <= 0)
+        if (JoinOrder <= 0 && NetworkGameManager.Instance != null)
             JoinOrder = NetworkGameManager.Instance.NextJoinOrder();
     }
     
@@ -80,6 +80,9 @@ public class NetworkPlayerCommand : NetworkBehaviour
         string connectionId
     )
     {
+        if (NetworkGameManager.Instance == null)
+            return;
+
         NetworkGameManager.Instance.RequestSpawn(
             Object.InputAuthority,
             nickname,
