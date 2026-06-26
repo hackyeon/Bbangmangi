@@ -104,7 +104,7 @@ public class BatAttack : NetworkBehaviour
                 Vector3.up * upwardPower;
 
             receiver.ApplyKnockback(velocity, Object.InputAuthority);
-            RPC_PlayHitEffects(receiver.transform.position + Vector3.up, receiver.Object.InputAuthority);
+            RPC_PlayHitEffects(receiver.transform.position + Vector3.up);
         }
     }
 
@@ -121,7 +121,7 @@ public class BatAttack : NetworkBehaviour
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    public void RPC_PlayHitEffects(Vector3 hitPosition, PlayerRef targetPlayer)
+    public void RPC_PlayHitEffects(Vector3 hitPosition)
     {
         if (hitParticlePrefab != null)
         {
@@ -130,13 +130,6 @@ public class BatAttack : NetworkBehaviour
                 hitPosition,
                 Quaternion.identity
             );
-        }
-
-        if (Runner != null &&
-            Runner.LocalPlayer == targetPlayer &&
-            CameraShake.Instance != null)
-        {
-            CameraShake.Instance.Shake();
         }
     }
 
