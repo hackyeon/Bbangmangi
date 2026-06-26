@@ -11,6 +11,9 @@ public class NetworkBotAI : MonoBehaviour
     [SerializeField] private float targetRefreshInterval = 0.35f;
     [SerializeField] private float wanderChangeInterval = 1.4f;
     [SerializeField] private float revengeDuration = 3f;
+    [SerializeField] private float ledgeLookAheadDistance = 1.2f;
+    [SerializeField] private float ledgeRayStartHeight = 0.6f;
+    [SerializeField] private float ledgeRayExtraDepth = 1.2f;
 
     private NetworkObject networkObject;
     private NetworkPlayerStats stats;
@@ -78,7 +81,7 @@ public class NetworkBotAI : MonoBehaviour
             moveInput = new Vector2(lookDirection.x, lookDirection.z);
 
         bool shouldAttack = attack != null && distance <= attackDistance;
-        motor.SetBotInput(moveInput, shouldAttack, lookDirection);
+        SetSafeBotInput(moveInput, shouldAttack, lookDirection);
     }
 
     private void Wander(float deltaTime)
@@ -103,7 +106,7 @@ public class NetworkBotAI : MonoBehaviour
         Vector3 lookDirection =
             new Vector3(wanderDirection.x, 0f, wanderDirection.y);
 
-        motor.SetBotInput(wanderDirection, false, lookDirection);
+        SetSafeBotInput(wanderDirection, false, lookDirection);
     }
 
     private Transform FindTarget()
@@ -156,6 +159,12 @@ public class NetworkBotAI : MonoBehaviour
         if (knockbackReceiver.LastHitAge > revengeDuration)
             return null;
 
+        NetworkPlayerStats attackerStats =
+            attackerObject.GetComponent<NetworkPlayerStats>();
+
+        if (!IsValidCandidate(attackerStats))
+            return null;
+
         if (FlatSqrDistance(attackerObject.transform.position, transform.position) >
             targetSearchRange * targetSearchRange)
         {
@@ -187,6 +196,116 @@ public class NetworkBotAI : MonoBehaviour
         if (candidate.Object == networkObject)
             return false;
 
+        NetworkPlayerMotor candidateMotor =
+            candidate.GetComponent<NetworkPlayerMotor>();
+
+        if (candidateMotor != null && !candidateMotor.IsGrounded)
+            return false;
+
+        return true;
+    }
+
+    private void SetSafeBotInput(
+        Vector2 moveInput,
+        bool attackPressed,
+        Vector3 lookDirection
+    )
+    {
+        if (moveInput.sqrMagnitude <= 0.001f || IsMoveDirectionSafe(moveInput))
+        {
+            motor.SetBotInput(moveInput, attackPressed, lookDirection);
+            return;
+        }
+
+        target = null;
+
+        Vector2 fallbackInput = GetFallbackMoveInput(moveInput);
+        Vector3 fallbackLookDirection =
+            fallbackInput.sqrMagnitude > 0.001f
+                ? new Vector3(fallbackInput.x, 0f, fallbackInput.y)
+                : lookDirection;
+
+        motor.SetBotInput(fallbackInput, false, fallbackLookDirection);
+    }
+
+    private bool IsMoveDirectionSafe(Vector2 moveInput)
+    {
+        if (moveInput.sqrMagnitude <= 0.001f)
+            return true;
+
+        Vector3 moveDirection =
+            new Vector3(moveInput.x, 0f, moveInput.y).normalized;
+
+        return HasGroundAhead(moveDirection);
+    }
+
+    private bool HasGroundAhead(Vector3 moveDirection)
+    {
+        if (moveDirection.sqrMagnitude <= 0.001f)
+            return true;
+
+        LayerMask groundMask =
+            motor != null && motor.groundLayer.value != 0
+                ? motor.groundLayer
+                : ~0;
+
+        Vector3 rayOrigin =
+            transform.position +
+            moveDirection.normalized * ledgeLookAheadDistance +
+            Vector3.up * ledgeRayStartHeight;
+
+        float rayDistance =
+            (motor != null ? motor.capsuleHalfHeight : 1f) +
+            ledgeRayStartHeight +
+            ledgeRayExtraDepth;
+
+        return Physics.Raycast(
+            rayOrigin,
+            Vector3.down,
+            rayDistance,
+            groundMask,
+            QueryTriggerInteraction.Ignore
+        );
+    }
+
+    private Vector2 GetFallbackMoveInput(Vector2 blockedMoveInput)
+    {
+        Vector3 blockedDirection =
+            new Vector3(blockedMoveInput.x, 0f, blockedMoveInput.y).normalized;
+
+        if (TryGetSafeMoveInput(-blockedDirection, out Vector2 fallbackInput))
+            return fallbackInput;
+
+        Vector3 position = transform.position;
+        Vector3 toCenter = new Vector3(-position.x, 0f, -position.z);
+
+        if (TryGetSafeMoveInput(toCenter, out fallbackInput))
+            return fallbackInput;
+
+        if (TryGetSafeMoveInput(transform.right, out fallbackInput))
+            return fallbackInput;
+
+        if (TryGetSafeMoveInput(-transform.right, out fallbackInput))
+            return fallbackInput;
+
+        return Vector2.zero;
+    }
+
+    private bool TryGetSafeMoveInput(Vector3 direction, out Vector2 moveInput)
+    {
+        moveInput = Vector2.zero;
+
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude <= 0.001f)
+            return false;
+
+        direction.Normalize();
+
+        if (!HasGroundAhead(direction))
+            return false;
+
+        moveInput = new Vector2(direction.x, direction.z);
         return true;
     }
 

@@ -321,12 +321,6 @@ public class NetworkGameManager : MonoBehaviour
         NetworkPlayerStats victimStats =
             victimObject.GetComponent<NetworkPlayerStats>();
 
-        bool attackerIsBot = attackerStats != null && attackerStats.IsBot;
-        bool victimIsBot = victimStats != null && victimStats.IsBot;
-
-        if (attackerIsBot && victimIsBot)
-            return;
-
         NetworkPlayerScore attackerScore =
             attackerObject.GetComponent<NetworkPlayerScore>();
 
