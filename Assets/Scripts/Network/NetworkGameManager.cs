@@ -39,6 +39,7 @@ public class NetworkGameManager : MonoBehaviour
     private readonly HashSet<string> reservedBotNames = new();
     private int nextJoinOrder = 1;
     private int pendingBotRespawns;
+    private int botPopulationGeneration;
     private float nextBotCheckTime;
 
     private void Awake()
@@ -48,8 +49,16 @@ public class NetworkGameManager : MonoBehaviour
 
     private void Update()
     {
-        if (!CanManageBots())
+        if (!CanManageNetworkState())
             return;
+
+        if (!NetworkRoundManager.IsGameplayActive)
+        {
+            if (spawnedBots.Count > 0)
+                DespawnAllBots();
+
+            return;
+        }
 
         TickBots(Time.deltaTime);
 
@@ -63,6 +72,8 @@ public class NetworkGameManager : MonoBehaviour
     public void Initialize(NetworkRunner networkRunner)
     {
         runner = networkRunner;
+        botPopulationGeneration++;
+        pendingBotRespawns = 0;
         RebuildSpawnedPlayers(networkRunner);
     }
 
@@ -120,25 +131,89 @@ public class NetworkGameManager : MonoBehaviour
         return nextJoinOrder++;
     }
 
-    public void RequestSpawn(
-        PlayerRef player,
+    public void HandleRoundPhaseStarted(RoundPhase phase)
+    {
+        if (!CanManageNetworkState())
+            return;
+
+        switch (phase)
+        {
+            case RoundPhase.CharacterSelect:
+                BeginCharacterSelectionRound();
+                break;
+
+            case RoundPhase.Playing:
+                BeginPlayingRound();
+                break;
+
+            case RoundPhase.Result:
+                DespawnAllBots();
+                break;
+        }
+    }
+
+    public void HandleCharacterSelection(
+        NetworkPlayerCommand playerCommand,
         string nickname,
         int characterId,
         string connectionId
     )
     {
-        if (runner == null || !runner.IsRunning)
+        if (!CanManageNetworkState() ||
+            playerCommand == null ||
+            playerCommand.Object == null ||
+            !playerCommand.Object.IsValid)
+        {
             return;
+        }
 
-        if (!runner.IsServer)
+        NetworkRoundManager roundManager = NetworkRoundManager.Instance;
+
+        if (roundManager == null ||
+            (roundManager.Phase != RoundPhase.CharacterSelect &&
+             roundManager.Phase != RoundPhase.Playing))
+        {
             return;
+        }
 
         CharacterData character = FindCharacter(characterId);
 
-        if (character == null)
+        nickname = nickname != null ? nickname.Trim() : "";
+
+        if (character == null || string.IsNullOrEmpty(nickname))
             return;
 
-        SpawnPlayer(player, nickname, character, connectionId);
+        PlayerRef player = playerCommand.Object.InputAuthority;
+
+        if (roundManager.Phase == RoundPhase.Playing &&
+            FindPlayerObject(player) != null)
+        {
+            return;
+        }
+
+        if (IsNicknameUsedByAnotherPlayer(nickname, playerCommand))
+        {
+            playerCommand.RPC_RejectCharacterSelection(
+                "이미 사용 중인 이름입니다."
+            );
+            return;
+        }
+
+        playerCommand.SetCharacterSelection(
+            character.id,
+            nickname,
+            connectionId
+        );
+
+        if (roundManager.Phase == RoundPhase.Playing)
+        {
+            SpawnPlayer(
+                player,
+                nickname,
+                character,
+                playerCommand.ConnectionId.ToString()
+            );
+        }
     }
 
     public void HandleCharacterFall(
@@ -147,6 +222,9 @@ public class NetworkGameManager : MonoBehaviour
     )
     {
         if (runner == null || !runner.IsServer)
+            return;
+
+        if (!NetworkRoundManager.IsGameplayActive)
             return;
 
         if (victimObject == null || !victimObject.IsValid)
@@ -175,13 +253,12 @@ public class NetworkGameManager : MonoBehaviour
         if (runner == null || !runner.IsServer)
             return;
 
-        if (spawnedPlayers.TryGetValue(player, out NetworkObject playerObject))
-        {
-            if (playerObject != null)
-                runner.Despawn(playerObject);
+        NetworkObject playerObject = FindPlayerObject(player);
 
-            spawnedPlayers.Remove(player);
-        }
+        if (playerObject != null && playerObject.IsValid)
+            runner.Despawn(playerObject);
+
+        spawnedPlayers.Remove(player);
     }
 
     private void SpawnPlayer(
@@ -191,8 +268,27 @@ public class NetworkGameManager : MonoBehaviour
         string connectionId
     )
     {
-        if (spawnedPlayers.ContainsKey(player))
+        if (!NetworkRoundManager.IsGameplayActive ||
+            player == PlayerRef.None)
+        {
             return;
+        }
+
+        if (spawnedPlayers.TryGetValue(player, out NetworkObject existingPlayer))
+        {
+            if (existingPlayer != null && existingPlayer.IsValid)
+                return;
+
+            spawnedPlayers.Remove(player);
+        }
+
+        NetworkObject restoredPlayer = FindPlayerObject(player);
+
+        if (restoredPlayer != null && restoredPlayer.IsValid)
+        {
+            spawnedPlayers[player] = restoredPlayer;
+            return;
+        }
 
         NetworkObject playerObject = runner.Spawn(
             playerPrefab,
@@ -205,8 +301,134 @@ public class NetworkGameManager : MonoBehaviour
         ConfigureCharacter(playerObject, nickname, character, connectionId, false);
     }
 
+    private void BeginCharacterSelectionRound()
+    {
+        DespawnAllPlayers();
+        DespawnAllBots();
+
+        NetworkPlayerCommand[] playerCommands =
+            FindObjectsByType<NetworkPlayerCommand>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerCommand playerCommand in playerCommands)
+        {
+            if (playerCommand == null || playerCommand.Object == null)
+                continue;
+
+            playerCommand.ResetCharacterSelection();
+        }
+    }
+
+    private void BeginPlayingRound()
+    {
+        NetworkPlayerCommand[] playerCommands =
+            FindObjectsByType<NetworkPlayerCommand>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerCommand playerCommand in playerCommands)
+        {
+            if (playerCommand == null ||
+                playerCommand.Object == null ||
+                !playerCommand.Object.IsValid)
+            {
+                continue;
+            }
+
+            PlayerRef player = playerCommand.Object.InputAuthority;
+
+            if (player == PlayerRef.None || !IsConnectedPlayer(player))
+                continue;
+
+            CharacterData character = playerCommand.HasSelectedCharacter
+                ? FindCharacter(playerCommand.SelectedCharacterId)
+                : null;
+
+            if (character == null)
+            {
+                character = GetDefaultCharacter();
+
+                if (character == null)
+                {
+                    Debug.LogError("자동 배정할 유효한 캐릭터가 없습니다.");
+                    continue;
+                }
+
+                playerCommand.AssignAutomaticCharacter(
+                    character.id,
+                    GetDefaultPlayerNickname(player)
+                );
+            }
+
+            string nickname = playerCommand.SelectedNickname.ToString();
+
+            if (string.IsNullOrEmpty(nickname))
+                nickname = GetDefaultPlayerNickname(player);
+
+            SpawnPlayer(
+                player,
+                nickname,
+                character,
+                playerCommand.ConnectionId.ToString()
+            );
+        }
+
+        nextBotCheckTime = 0f;
+        EnsureBotPopulation();
+    }
+
+    private void DespawnAllPlayers()
+    {
+        HashSet<NetworkObject> playerObjects = new();
+
+        foreach (NetworkObject playerObject in spawnedPlayers.Values)
+        {
+            if (playerObject != null && playerObject.IsValid)
+                playerObjects.Add(playerObject);
+        }
+
+        NetworkPlayerStats[] playerStats =
+            FindObjectsByType<NetworkPlayerStats>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerStats stats in playerStats)
+        {
+            if (stats == null ||
+                stats.Object == null ||
+                !stats.Object.IsValid ||
+                stats.IsBot)
+            {
+                continue;
+            }
+
+            playerObjects.Add(stats.Object);
+        }
+
+        foreach (NetworkObject playerObject in playerObjects)
+            runner.Despawn(playerObject);
+
+        spawnedPlayers.Clear();
+    }
+
+    private void DespawnAllBots()
+    {
+        botPopulationGeneration++;
+        pendingBotRespawns = 0;
+        CleanupBotList();
+
+        foreach (NetworkObject botObject in spawnedBots)
+        {
+            ReleaseBotName(botObject);
+
+            if (botObject != null && botObject.IsValid)
+                runner.Despawn(botObject);
+        }
+
+        spawnedBots.Clear();
+        reservedBotNames.Clear();
+    }
+
     private void EnsureBotPopulation()
     {
+        if (!CanManageBots())
+            return;
+
         CleanupBotList();
 
         int desiredBotCount = GetDesiredBotCount();
@@ -288,13 +510,18 @@ public class NetworkGameManager : MonoBehaviour
         if (botObject != null && botObject.IsValid)
             runner.Despawn(botObject);
 
-        StartCoroutine(BotRespawnRoutine());
+        if (NetworkRoundManager.IsGameplayActive)
+            StartCoroutine(BotRespawnRoutine(botPopulationGeneration));
     }
 
-    private IEnumerator BotRespawnRoutine()
+    private IEnumerator BotRespawnRoutine(int generation)
     {
         pendingBotRespawns++;
         yield return new WaitForSeconds(botRespawnDelay);
+
+        if (generation != botPopulationGeneration)
+            yield break;
+
         pendingBotRespawns = Mathf.Max(0, pendingBotRespawns - 1);
         EnsureBotPopulation();
     }
@@ -304,8 +531,11 @@ public class NetworkGameManager : MonoBehaviour
         KnockbackReceiver knockbackReceiver
     )
     {
-        if (knockbackReceiver == null)
+        if (!NetworkRoundManager.IsGameplayActive ||
+            knockbackReceiver == null)
+        {
             return;
+        }
 
         NetworkObject attackerObject = knockbackReceiver.LastAttackerObject;
 
@@ -449,6 +679,39 @@ public class NetworkGameManager : MonoBehaviour
         return null;
     }
 
+    private CharacterData GetDefaultCharacter()
+    {
+        if (characters == null)
+            return null;
+
+        foreach (CharacterData character in characters)
+        {
+            if (character != null)
+                return character;
+        }
+
+        return null;
+    }
+
+    private bool IsConnectedPlayer(PlayerRef player)
+    {
+        if (runner == null)
+            return false;
+
+        foreach (PlayerRef connectedPlayer in runner.CommittedPlayers)
+        {
+            if (connectedPlayer == player)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static string GetDefaultPlayerNickname(PlayerRef player)
+    {
+        return $"Player {player.PlayerId}";
+    }
+
     private CharacterData GetRandomCharacter()
     {
         if (characters == null || characters.Length == 0)
@@ -582,6 +845,59 @@ public class NetworkGameManager : MonoBehaviour
         return false;
     }
 
+    private bool IsNicknameUsedByAnotherPlayer(
+        string nickname,
+        NetworkPlayerCommand requestingCommand
+    )
+    {
+        NetworkPlayerCommand[] playerCommands =
+            FindObjectsByType<NetworkPlayerCommand>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerCommand playerCommand in playerCommands)
+        {
+            if (playerCommand == null ||
+                playerCommand == requestingCommand ||
+                !playerCommand.HasSelectedCharacter)
+            {
+                continue;
+            }
+
+            if (string.Equals(
+                    playerCommand.SelectedNickname.ToString(),
+                    nickname,
+                    System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        NetworkPlayerName[] playerNames =
+            FindObjectsByType<NetworkPlayerName>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerName playerName in playerNames)
+        {
+            if (playerName == null || playerName.Object == null)
+                continue;
+
+            if (requestingCommand != null &&
+                playerName.Object.InputAuthority ==
+                requestingCommand.Object.InputAuthority)
+            {
+                continue;
+            }
+
+            if (string.Equals(
+                    playerName.Nickname.ToString(),
+                    nickname,
+                    System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private Vector3 GetSpawnPosition()
     {
         Vector2 randomPoint = Random.insideUnitCircle * botSpawnRadius;
@@ -589,6 +905,12 @@ public class NetworkGameManager : MonoBehaviour
     }
 
     private bool CanManageBots()
+    {
+        return CanManageNetworkState() &&
+               NetworkRoundManager.IsGameplayActive;
+    }
+
+    private bool CanManageNetworkState()
     {
         return runner != null &&
                runner.IsRunning &&

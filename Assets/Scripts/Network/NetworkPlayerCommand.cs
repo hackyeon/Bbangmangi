@@ -6,6 +6,9 @@ public class NetworkPlayerCommand : NetworkBehaviour
     [Networked] public int HostScore { get; private set; }
     [Networked] public int JoinOrder { get; private set; }
     [Networked] public NetworkString<_32> ConnectionId { get; private set; }
+    [Networked] public int SelectedCharacterId { get; private set; }
+    [Networked] public NetworkBool HasSelectedCharacter { get; private set; }
+    [Networked] public NetworkString<_16> SelectedNickname { get; private set; }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     public void RPC_SubmitHostCandidate(int score, string connectionId)
@@ -34,6 +37,9 @@ public class NetworkPlayerCommand : NetworkBehaviour
                 CalculateHostCandidateScore(),
                 NetworkRunnerManager.LocalConnectionId
             );
+
+            if (NetworkRoundManager.Instance != null)
+                NetworkRoundManager.Instance.RefreshLocalPresentation();
         }
     }
     
@@ -64,9 +70,9 @@ public class NetworkPlayerCommand : NetworkBehaviour
         return score;
     }
 
-    public void RequestSpawn(string nickname, int characterId)
+    public void SubmitCharacterSelection(string nickname, int characterId)
     {
-        RPC_RequestSpawn(
+        RPC_SubmitCharacterSelection(
             nickname,
             characterId,
             NetworkRunnerManager.LocalConnectionId
@@ -74,7 +80,7 @@ public class NetworkPlayerCommand : NetworkBehaviour
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    public void RPC_RequestSpawn(
+    public void RPC_SubmitCharacterSelection(
         string nickname,
         int characterId,
         string connectionId
@@ -83,11 +89,58 @@ public class NetworkPlayerCommand : NetworkBehaviour
         if (NetworkGameManager.Instance == null)
             return;
 
-        NetworkGameManager.Instance.RequestSpawn(
-            Object.InputAuthority,
+        NetworkGameManager.Instance.HandleCharacterSelection(
+            this,
             nickname,
             characterId,
             connectionId
         );
+    }
+
+    public void SetCharacterSelection(
+        int characterId,
+        string nickname,
+        string connectionId
+    )
+    {
+        if (!HasStateAuthority)
+            return;
+
+        SelectedCharacterId = characterId;
+        SelectedNickname = nickname;
+        HasSelectedCharacter = true;
+
+        if (!string.IsNullOrEmpty(connectionId))
+            ConnectionId = connectionId;
+    }
+
+    public void AssignAutomaticCharacter(int characterId, string fallbackNickname)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        SelectedCharacterId = characterId;
+        HasSelectedCharacter = true;
+
+        if (string.IsNullOrEmpty(SelectedNickname.ToString()))
+            SelectedNickname = fallbackNickname;
+    }
+
+    public void ResetCharacterSelection()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        SelectedCharacterId = -1;
+        HasSelectedCharacter = false;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority)]
+    public void RPC_RejectCharacterSelection(string message)
+    {
+        CharacterSelectUI characterSelectUI =
+            FindFirstObjectByType<CharacterSelectUI>();
+
+        characterSelectUI?.ShowSelectionError(message);
     }
 }

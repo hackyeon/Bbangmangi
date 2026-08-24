@@ -21,6 +21,7 @@ public class CharacterSelectUI : MonoBehaviour
     private NetworkRunnerManager networkRunnerManager;
     private bool isNetworkReady;
     private string lastNickname;
+    private int preparedRoundNumber = -1;
 
     private void Start()
     {
@@ -95,12 +96,22 @@ public class CharacterSelectUI : MonoBehaviour
         string nickname = nameInputField.text.Trim();
         lastNickname = nickname;
 
-        networkRunnerManager.RequestSpawn(
+        networkRunnerManager.SubmitCharacterSelection(
             nickname,
             selectedCharacter.id
         );
 
-        Hide();
+        if (NetworkRoundManager.Instance != null &&
+            NetworkRoundManager.Instance.Phase == RoundPhase.Playing)
+        {
+            Hide();
+            return;
+        }
+
+        if (startButtonText != null)
+            startButtonText.text = "선택 변경";
+
+        SetMessage("캐릭터 선택이 저장되었습니다.");
     }
 
     public void SetStartButtonEnabled(bool enabled)
@@ -123,6 +134,26 @@ public class CharacterSelectUI : MonoBehaviour
         ValidateInput();
     }
 
+    public void BeginCharacterSelection(int roundNumber)
+    {
+        if (preparedRoundNumber != roundNumber)
+        {
+            preparedRoundNumber = roundNumber;
+            selectedCharacter = null;
+
+            if (characterButtonParent != null)
+            {
+                CharacterButtonUI[] buttons =
+                    characterButtonParent.GetComponentsInChildren<CharacterButtonUI>();
+
+                foreach (CharacterButtonUI button in buttons)
+                    button.SetSelected(false);
+            }
+        }
+
+        Show();
+    }
+
     public void Hide()
     {
         if (panel != null)
@@ -130,6 +161,12 @@ public class CharacterSelectUI : MonoBehaviour
 
         if (gameUI != null)
             gameUI.SetActive(true);
+    }
+
+    public void ShowSelectionError(string message)
+    {
+        Show();
+        SetMessage(message);
     }
 
     private bool ValidateInput()
@@ -153,7 +190,7 @@ public class CharacterSelectUI : MonoBehaviour
             startButton.interactable = false;
 
             if (startButtonText != null)
-                startButtonText.text = "시작";
+                startButtonText.text = "선택 완료";
 
             SetMessage("캐릭터를 선택해 주세요.");
             return false;
@@ -169,7 +206,7 @@ public class CharacterSelectUI : MonoBehaviour
             startButton.interactable = false;
 
             if (startButtonText != null)
-                startButtonText.text = "시작";
+                startButtonText.text = "선택 완료";
 
             SetMessage("캐릭터 이름을 입력해 주세요.");
             return false;
@@ -180,7 +217,7 @@ public class CharacterSelectUI : MonoBehaviour
             startButton.interactable = false;
 
             if (startButtonText != null)
-                startButtonText.text = "시작";
+                startButtonText.text = "선택 완료";
 
             SetMessage("이미 사용 중인 이름입니다.");
             return false;
@@ -189,7 +226,7 @@ public class CharacterSelectUI : MonoBehaviour
         startButton.interactable = true;
 
         if (startButtonText != null)
-            startButtonText.text = "시작";
+            startButtonText.text = "선택 완료";
 
         SetMessage("");
         return true;
@@ -217,6 +254,27 @@ public class CharacterSelectUI : MonoBehaviour
                 if (nickname == lastNickname)
                     continue;
 
+                return true;
+            }
+        }
+
+        NetworkPlayerCommand[] playerCommands =
+            FindObjectsByType<NetworkPlayerCommand>(FindObjectsSortMode.None);
+
+        foreach (NetworkPlayerCommand playerCommand in playerCommands)
+        {
+            if (playerCommand == null ||
+                playerCommand.HasInputAuthority ||
+                !playerCommand.HasSelectedCharacter)
+            {
+                continue;
+            }
+
+            if (string.Equals(
+                    playerCommand.SelectedNickname.ToString(),
+                    nickname,
+                    System.StringComparison.OrdinalIgnoreCase))
+            {
                 return true;
             }
         }

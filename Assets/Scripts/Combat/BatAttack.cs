@@ -27,6 +27,13 @@ public class BatAttack : NetworkBehaviour
         if (!HasStateAuthority)
             return;
 
+        if (!NetworkRoundManager.IsGameplayActive)
+        {
+            HasPendingHit = false;
+            HitDelayTimer = TickTimer.None;
+            return;
+        }
+
         if (!HasPendingHit || !HitDelayTimer.Expired(Runner))
             return;
 
@@ -37,6 +44,9 @@ public class BatAttack : NetworkBehaviour
     public void Attack()
     {
         if (!HasStateAuthority)
+            return;
+
+        if (!NetworkRoundManager.IsGameplayActive)
             return;
 
         if (!AttackCooldownTimer.ExpiredOrNotRunning(Runner))

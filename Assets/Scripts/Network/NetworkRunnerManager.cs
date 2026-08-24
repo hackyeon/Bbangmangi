@@ -14,6 +14,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     public MobileJoystick moveJoystick;
     public AttackJoystick attackJoystick;
     public NetworkObject commandPrefab;
+    public NetworkObject roundManagerPrefab;
     [SerializeField, Min(0.1f)] private float hostStallNoticeDelay = 0.7f;
     
     private NetworkPlayerCommand localCommand;
@@ -31,6 +32,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         Guid.NewGuid().ToString("N");
 
     public bool IsHostMigrating { get; private set; }
+    public NetworkPlayerCommand LocalCommand => localCommand;
 
     private Tick lastObservedServerTick;
     private float lastServerTickAdvanceTime;
@@ -102,7 +104,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    public void RequestSpawn(string nickname, int characterId)
+    public void SubmitCharacterSelection(string nickname, int characterId)
     {
         if (localCommand == null)
         {
@@ -110,7 +112,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        localCommand.RequestSpawn(nickname, characterId);
+        localCommand.SubmitCharacterSelection(nickname, characterId);
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
@@ -118,17 +120,20 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         if (!runner.IsServer)
             return;
 
-        if (playerCommands.ContainsKey(player))
-            return;
+        if (!playerCommands.ContainsKey(player))
+        {
+            NetworkObject commandObject = runner.Spawn(
+                commandPrefab,
+                Vector3.zero,
+                Quaternion.identity,
+                player
+            );
 
-        NetworkObject commandObject = runner.Spawn(
-            commandPrefab,
-            Vector3.zero,
-            Quaternion.identity,
-            player
-        );
+            playerCommands[player] = commandObject;
+        }
 
-        playerCommands[player] = commandObject;
+        if (!IsHostMigrating)
+            EnsureRoundManager(runner);
     }
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
@@ -227,6 +232,78 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         RebuildPlayerCommands();
     }
 
+    private void EnsureRoundManager(NetworkRunner networkRunner)
+    {
+        if (networkRunner == null ||
+            !networkRunner.IsRunning ||
+            !networkRunner.IsServer)
+        {
+            return;
+        }
+
+        NetworkRoundManager roundManager = FindRoundManager(networkRunner);
+
+        if (roundManager == null)
+        {
+            if (roundManagerPrefab == null)
+            {
+                Debug.LogError(
+                    "NetworkRoundManager Prefab이 연결되지 않았습니다."
+                );
+                return;
+            }
+
+            NetworkObject roundManagerObject = networkRunner.Spawn(
+                roundManagerPrefab,
+                Vector3.zero,
+                Quaternion.identity,
+                PlayerRef.None
+            );
+
+            roundManager = roundManagerObject != null
+                ? roundManagerObject.GetComponent<NetworkRoundManager>()
+                : null;
+
+            if (roundManager == null)
+            {
+                if (roundManagerObject != null && roundManagerObject.IsValid)
+                    networkRunner.Despawn(roundManagerObject);
+
+                Debug.LogError(
+                    "Round Manager Prefab에 NetworkRoundManager가 없습니다."
+                );
+                return;
+            }
+        }
+
+        roundManager.TryStartFirstRound();
+    }
+
+    private static NetworkRoundManager FindRoundManager(
+        NetworkRunner networkRunner
+    )
+    {
+        NetworkRoundManager[] roundManagers =
+            FindObjectsByType<NetworkRoundManager>(
+                FindObjectsSortMode.None
+            );
+
+        foreach (NetworkRoundManager roundManager in roundManagers)
+        {
+            if (roundManager == null ||
+                roundManager.Object == null ||
+                !roundManager.Object.IsValid)
+            {
+                continue;
+            }
+
+            if (roundManager.Runner == networkRunner)
+                return roundManager;
+        }
+
+        return null;
+    }
+
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }
@@ -273,6 +350,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         IsHostMigrating = false;
+        EnsureRoundManager(runner);
 
         await runner.PushHostMigrationSnapshot();
         StartCoroutine(CleanupDisconnectedPlayersAfterMigration(runner));

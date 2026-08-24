@@ -7,7 +7,7 @@ public class NetworkPlayerScore : NetworkBehaviour
 
     public void AddKill()
     {
-        if (!HasStateAuthority)
+        if (!HasStateAuthority || !NetworkRoundManager.IsGameplayActive)
             return;
 
         KillCount++;

@@ -88,7 +88,7 @@ public class NetworkPlayerStats : NetworkBehaviour
 
     public void ApplyRandomKillReward()
     {
-        if (!HasStateAuthority)
+        if (!HasStateAuthority || !NetworkRoundManager.IsGameplayActive)
             return;
 
         int rewardIndex = Random.Range(0, 3);

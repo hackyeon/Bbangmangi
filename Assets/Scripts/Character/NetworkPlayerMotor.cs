@@ -29,6 +29,14 @@ public class NetworkPlayerMotor : NetworkBehaviour
             CameraFollow cameraFollow = FindCameraFollow();
             if (cameraFollow != null)
                 cameraFollow.target = transform;
+
+            if (NetworkRoundManager.IsGameplayActive)
+            {
+                CharacterSelectUI characterSelectUI =
+                    FindFirstObjectByType<CharacterSelectUI>();
+
+                characterSelectUI?.Hide();
+            }
         }
     }
     
@@ -63,6 +71,17 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         Vector2 moveInput = Vector2.zero;
         bool attackPressed = false;
+        bool isGameplayActive = NetworkRoundManager.IsGameplayActive;
+
+        if (!isGameplayActive)
+        {
+            botMoveInput = Vector2.zero;
+            botAttackPressed = false;
+            botLookDirection = Vector3.zero;
+            CurrentMoveInput = Vector2.zero;
+            knockbackReceiver?.ConsumeVelocity(Runner.DeltaTime);
+            return;
+        }
 
         if (IsBotControlled())
         {
@@ -96,9 +115,7 @@ public class NetworkPlayerMotor : NetworkBehaviour
             Vector3.up * verticalVelocity;
 
         if (knockbackReceiver != null)
-        {
             velocity += knockbackReceiver.ConsumeVelocity(Runner.DeltaTime);
-        }
 
         transform.position += velocity * Runner.DeltaTime;
 
@@ -126,6 +143,14 @@ public class NetworkPlayerMotor : NetworkBehaviour
 
         if (!IsBotControlled())
             return;
+
+        if (!NetworkRoundManager.IsGameplayActive)
+        {
+            botMoveInput = Vector2.zero;
+            botAttackPressed = false;
+            botLookDirection = Vector3.zero;
+            return;
+        }
 
         if (moveDirection.sqrMagnitude > 1f)
             moveDirection.Normalize();
