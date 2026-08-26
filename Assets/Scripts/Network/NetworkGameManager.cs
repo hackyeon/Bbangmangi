@@ -245,7 +245,13 @@ public class NetworkGameManager : MonoBehaviour
         if (victimObject.InputAuthority != PlayerRef.None)
             DespawnPlayer(victimObject.InputAuthority);
         else
+        {
+            bool removedKing = IsKing(victimObject);
             runner.Despawn(victimObject);
+
+            if (removedKing)
+                NetworkRoundManager.Instance?.RecalculateKing();
+        }
     }
 
     public void DespawnPlayer(PlayerRef player)
@@ -254,11 +260,15 @@ public class NetworkGameManager : MonoBehaviour
             return;
 
         NetworkObject playerObject = FindPlayerObject(player);
+        bool removedKing = IsKing(playerObject);
 
         if (playerObject != null && playerObject.IsValid)
             runner.Despawn(playerObject);
 
         spawnedPlayers.Remove(player);
+
+        if (removedKing)
+            NetworkRoundManager.Instance?.RecalculateKing();
     }
 
     private void SpawnPlayer(
@@ -504,11 +514,15 @@ public class NetworkGameManager : MonoBehaviour
 
     private void DespawnBot(NetworkObject botObject)
     {
+        bool removedKing = IsKing(botObject);
         spawnedBots.Remove(botObject);
         ReleaseBotName(botObject);
 
         if (botObject != null && botObject.IsValid)
             runner.Despawn(botObject);
+
+        if (removedKing)
+            NetworkRoundManager.Instance?.RecalculateKing();
 
         if (NetworkRoundManager.IsGameplayActive)
             StartCoroutine(BotRespawnRoutine(botPopulationGeneration));
@@ -545,20 +559,38 @@ public class NetworkGameManager : MonoBehaviour
         if (!IsValidAttacker(attackerObject, victimObject))
             return;
 
-        NetworkPlayerStats attackerStats =
-            attackerObject.GetComponent<NetworkPlayerStats>();
-
-        NetworkPlayerStats victimStats =
-            victimObject.GetComponent<NetworkPlayerStats>();
-
         NetworkPlayerScore attackerScore =
             attackerObject.GetComponent<NetworkPlayerScore>();
 
-        if (attackerScore != null)
-            attackerScore.AddKill();
+        NetworkPlayerScore victimScore =
+            victimObject.GetComponent<NetworkPlayerScore>();
+
+        bool victimWasKing = victimScore != null && victimScore.IsKing;
+
+        if (attackerScore == null ||
+            !attackerScore.RegisterKill(victimWasKing))
+        {
+            return;
+        }
+
+        NetworkPlayerStats attackerStats =
+            attackerObject.GetComponent<NetworkPlayerStats>();
 
         if (attackerStats != null)
             attackerStats.ApplyRandomKillReward();
+
+        NetworkRoundManager.Instance?.RecalculateKing();
+    }
+
+    private static bool IsKing(NetworkObject playerObject)
+    {
+        if (playerObject == null || !playerObject.IsValid)
+            return false;
+
+        NetworkPlayerScore score =
+            playerObject.GetComponent<NetworkPlayerScore>();
+
+        return score != null && score.IsKing;
     }
 
     private NetworkObject FindPlayerObject(PlayerRef player)

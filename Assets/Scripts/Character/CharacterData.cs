@@ -24,6 +24,10 @@ public class CharacterData : ScriptableObject
     [Header("Kill Scale")]
     public string[] killScaleTargetNames;
 
+    [Header("King Crown")]
+    public Vector3 crownOffset = new Vector3(0f, 2.8f, 0f);
+    [Min(0.01f)] public float crownScale = 0.65f;
+
     [Header("Capsule Character")]
     public bool useCapsuleVisual;
 

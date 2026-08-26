@@ -35,6 +35,7 @@ public class NetworkPlayerStats : NetworkBehaviour
     private int appliedCharacterId = -1;
     private GameObject currentModel;
     private NetworkKillScaleVisual killScaleVisual;
+    private KingCrownVisual kingCrownVisual;
 
     public override void Spawned()
     {
@@ -188,6 +189,7 @@ public class NetworkPlayerStats : NetworkBehaviour
             }
 
             ConfigureKillScale(character, capsuleVisual);
+            ConfigureKingCrown(character, capsuleVisual);
             appliedCharacterId = character.id;
             return;
         }
@@ -234,6 +236,7 @@ public class NetworkPlayerStats : NetworkBehaviour
         }
 
         ConfigureKillScale(character, currentModel);
+        ConfigureKingCrown(character, currentModel);
         appliedCharacterId = character.id;
     }
 
@@ -258,5 +261,19 @@ public class NetworkPlayerStats : NetworkBehaviour
             killScaleVisual = gameObject.AddComponent<NetworkKillScaleVisual>();
 
         return killScaleVisual;
+    }
+
+    private void ConfigureKingCrown(
+        CharacterData character,
+        GameObject visualObject
+    )
+    {
+        if (kingCrownVisual == null)
+            kingCrownVisual = GetComponent<KingCrownVisual>();
+
+        if (kingCrownVisual == null)
+            kingCrownVisual = gameObject.AddComponent<KingCrownVisual>();
+
+        kingCrownVisual.Configure(character, visualObject);
     }
 }

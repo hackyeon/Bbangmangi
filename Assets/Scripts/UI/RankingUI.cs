@@ -83,11 +83,9 @@ public class RankingUI : MonoBehaviour
         List<NetworkPlayerScore> ranking =
             players
                 .Where(IsValidPlayer)
-                .OrderByDescending(player => player.KillCount)
-                .ThenBy(player => IsBot(player) ? 1 : 0)
-                .ThenBy(player => player.Object.InputAuthority.PlayerId)
-                .ThenBy(GetNickname)
                 .ToList();
+
+        ranking.Sort(NetworkRoundManager.ComparePlayerScores);
 
         int localPlayerIndex = ranking.FindIndex(IsLocalPlayer);
         StringBuilder rankingBuilder = new();
@@ -146,7 +144,9 @@ public class RankingUI : MonoBehaviour
                 continue;
 
             topThreeBuilder.AppendLine(
-                $"{index + 1}위   {GetNickname(entry)}   {entry.KillCount} Kill"
+                $"{index + 1}위   {GetKingMarker(entry.IsKing)}" +
+                $"{GetNickname(entry)}   {entry.RoundScore}점 / " +
+                $"{entry.KillCount} Kill"
             );
         }
 
@@ -174,7 +174,7 @@ public class RankingUI : MonoBehaviour
 
             resultMyRankText.text =
                 $"내 순위\n{index + 1}위 / {roundManager.ResultEntryCount}명\n" +
-                $"{entry.KillCount} Kill";
+                $"{entry.RoundScore}점 / {entry.KillCount} Kill";
             return;
         }
 
@@ -184,7 +184,9 @@ public class RankingUI : MonoBehaviour
     private string BuildLiveLine(int index, NetworkPlayerScore player)
     {
         string line =
-            $"{index + 1}. {GetNickname(player)}  {player.KillCount}\n";
+            $"{index + 1}. {GetKingMarker(player.IsKing)}" +
+            $"{GetNickname(player)}  {player.RoundScore}점 · " +
+            $"{player.KillCount} Kill\n";
 
         return IsLocalPlayer(player)
             ? $"<color=#5DFFB5>{line}</color>"
@@ -262,6 +264,11 @@ public class RankingUI : MonoBehaviour
         return entry.IsBot
             ? "Bot"
             : $"Player {entry.Player.PlayerId}";
+    }
+
+    private static string GetKingMarker(bool isKing)
+    {
+        return isKing ? "<color=#FFD34E>[KING]</color> " : "";
     }
 
     private void SetLiveRankingVisible(bool visible)

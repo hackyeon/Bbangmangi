@@ -230,6 +230,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
 
         RebuildPlayerCommands();
+        NetworkRoundManager.Instance?.ValidateKingStateAfterMigration();
     }
 
     private void EnsureRoundManager(NetworkRunner networkRunner)
@@ -499,6 +500,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
 
         RebuildPlayerCommands();
+        NetworkRoundManager.Instance?.RecalculateKing();
     }
 
     private static byte[] GetLocalConnectionToken()
