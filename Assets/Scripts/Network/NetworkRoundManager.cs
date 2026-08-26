@@ -51,10 +51,12 @@ public class NetworkRoundManager : NetworkBehaviour
 
     private RoundPhase presentedPhase = (RoundPhase)(-1);
     private int presentedRoundNumber = -1;
+    private NetworkItemSpawner itemSpawner;
 
     public override void Spawned()
     {
         Instance = this;
+        itemSpawner = GetComponent<NetworkItemSpawner>();
         RefreshLocalPresentation();
     }
 
@@ -109,7 +111,7 @@ public class NetworkRoundManager : NetworkBehaviour
             characterSelectDuration
         );
 
-        NetworkGameManager.Instance?.HandleRoundPhaseStarted(Phase);
+        NotifyRoundPhaseStarted();
         Debug.Log($"[Round] Round {RoundNumber} CharacterSelect started");
     }
 
@@ -200,9 +202,10 @@ public class NetworkRoundManager : NetworkBehaviour
         ApplySingleKing(scores, selectedKing);
     }
 
-    public void ValidateKingStateAfterMigration()
+    public void ValidateStateAfterMigration()
     {
         RecalculateKing();
+        GetItemSpawner()?.ValidateAfterHostMigration();
     }
 
     public static int ComparePlayerScores(
@@ -269,7 +272,7 @@ public class NetworkRoundManager : NetworkBehaviour
         Phase = RoundPhase.Playing;
         PhaseTimer = TickTimer.CreateFromSeconds(Runner, playingDuration);
 
-        NetworkGameManager.Instance?.HandleRoundPhaseStarted(Phase);
+        NotifyRoundPhaseStarted();
         Debug.Log($"[Round] Round {RoundNumber} Playing started");
     }
 
@@ -279,7 +282,7 @@ public class NetworkRoundManager : NetworkBehaviour
         PhaseTimer = TickTimer.CreateFromSeconds(Runner, resultDuration);
 
         CaptureRoundResults();
-        NetworkGameManager.Instance?.HandleRoundPhaseStarted(Phase);
+        NotifyRoundPhaseStarted();
         Debug.Log($"[Round] Round {RoundNumber} Result started");
     }
 
@@ -294,7 +297,7 @@ public class NetworkRoundManager : NetworkBehaviour
             characterSelectDuration
         );
 
-        NetworkGameManager.Instance?.HandleRoundPhaseStarted(Phase);
+        NotifyRoundPhaseStarted();
         Debug.Log($"[Round] Round {RoundNumber} CharacterSelect started");
     }
 
@@ -460,6 +463,20 @@ public class NetworkRoundManager : NetworkBehaviour
     {
         foreach (NetworkPlayerScore score in GetValidPlayerScores())
             score.ResetRoundData();
+    }
+
+    private void NotifyRoundPhaseStarted()
+    {
+        NetworkGameManager.Instance?.HandleRoundPhaseStarted(Phase);
+        GetItemSpawner()?.HandleRoundPhaseStarted(Phase);
+    }
+
+    private NetworkItemSpawner GetItemSpawner()
+    {
+        if (itemSpawner == null)
+            itemSpawner = GetComponent<NetworkItemSpawner>();
+
+        return itemSpawner;
     }
 
     private void ApplyLocalPresentation()

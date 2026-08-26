@@ -113,8 +113,14 @@ public class BatAttack : NetworkBehaviour
                 dir * knockbackPower +
                 Vector3.up * upwardPower;
 
-            receiver.ApplyKnockback(velocity, Object.InputAuthority, Object);
-            RPC_PlayHitEffects(receiver.transform.position + Vector3.up);
+            bool knockbackApplied = receiver.ApplyKnockback(
+                velocity,
+                Object.InputAuthority,
+                Object
+            );
+
+            if (knockbackApplied)
+                RPC_PlayHitEffects(receiver.transform.position + Vector3.up);
         }
     }
 

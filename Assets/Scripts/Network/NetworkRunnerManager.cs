@@ -230,7 +230,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             NetworkGameManager.Instance.RebuildSpawnedPlayers(migrationRunner);
 
         RebuildPlayerCommands();
-        NetworkRoundManager.Instance?.ValidateKingStateAfterMigration();
+        NetworkRoundManager.Instance?.ValidateStateAfterMigration();
     }
 
     private void EnsureRoundManager(NetworkRunner networkRunner)

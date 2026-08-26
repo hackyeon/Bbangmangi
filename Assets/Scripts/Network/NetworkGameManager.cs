@@ -136,6 +136,9 @@ public class NetworkGameManager : MonoBehaviour
         if (!CanManageNetworkState())
             return;
 
+        if (phase != RoundPhase.Playing)
+            ResetAllCharacterItemEffects();
+
         switch (phase)
         {
             case RoundPhase.CharacterSelect:
@@ -231,6 +234,11 @@ public class NetworkGameManager : MonoBehaviour
             return;
 
         AwardKill(victimObject, knockbackReceiver);
+
+        NetworkCharacterItemEffect itemEffect =
+            victimObject.GetComponent<NetworkCharacterItemEffect>();
+
+        itemEffect?.ResetTemporaryEffects();
         knockbackReceiver?.ClearLastAttacker();
 
         NetworkPlayerStats victimStats =
@@ -580,6 +588,27 @@ public class NetworkGameManager : MonoBehaviour
             attackerStats.ApplyRandomKillReward();
 
         NetworkRoundManager.Instance?.RecalculateKing();
+    }
+
+    private void ResetAllCharacterItemEffects()
+    {
+        NetworkCharacterItemEffect[] itemEffects =
+            FindObjectsByType<NetworkCharacterItemEffect>(
+                FindObjectsSortMode.None
+            );
+
+        foreach (NetworkCharacterItemEffect itemEffect in itemEffects)
+        {
+            if (itemEffect == null ||
+                itemEffect.Object == null ||
+                !itemEffect.Object.IsValid ||
+                itemEffect.Runner != runner)
+            {
+                continue;
+            }
+
+            itemEffect.ResetTemporaryEffects();
+        }
     }
 
     private static bool IsKing(NetworkObject playerObject)

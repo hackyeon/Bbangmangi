@@ -36,6 +36,7 @@ public class NetworkPlayerStats : NetworkBehaviour
     private GameObject currentModel;
     private NetworkKillScaleVisual killScaleVisual;
     private KingCrownVisual kingCrownVisual;
+    private float temporaryAttackRangeMultiplier = 1f;
 
     public override void Spawned()
     {
@@ -113,6 +114,23 @@ public class NetworkPlayerStats : NetworkBehaviour
         ApplyRuntimeStats();
     }
 
+    public void SetTemporaryItemModifiers(
+        float weaponScaleMultiplier,
+        float attackRangeMultiplier
+    )
+    {
+        temporaryAttackRangeMultiplier = Mathf.Max(
+            0.01f,
+            attackRangeMultiplier
+        );
+
+        GetKillScaleVisual().SetTemporaryScaleMultiplier(
+            weaponScaleMultiplier
+        );
+
+        ApplyRuntimeStats();
+    }
+
     private void ApplyRuntimeStats()
     {
         NetworkPlayerMotor motor = GetComponent<NetworkPlayerMotor>();
@@ -127,7 +145,10 @@ public class NetworkPlayerStats : NetworkBehaviour
                 batAttack.knockbackPower = CurrentKnockbackPower;
 
             if (CurrentAttackRange > 0f)
-                batAttack.attackRange = CurrentAttackRange;
+            {
+                batAttack.attackRange =
+                    CurrentAttackRange * temporaryAttackRangeMultiplier;
+            }
         }
     }
 

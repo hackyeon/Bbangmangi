@@ -26,6 +26,8 @@ public class NetworkKillScaleVisual : MonoBehaviour
     private CharacterData configuredCharacter;
     private Transform configuredVisualRoot;
     private int appliedKillCount = int.MinValue;
+    private float temporaryScaleMultiplier = 1f;
+    private float appliedTemporaryScaleMultiplier = float.NaN;
 
     public void Configure(CharacterData character, GameObject visualObject)
     {
@@ -39,6 +41,7 @@ public class NetworkKillScaleVisual : MonoBehaviour
         configuredCharacter = character;
         configuredVisualRoot = visualRoot;
         appliedKillCount = int.MinValue;
+        appliedTemporaryScaleMultiplier = float.NaN;
         scaleTargets.Clear();
 
         if (configuredVisualRoot == null)
@@ -58,11 +61,20 @@ public class NetworkKillScaleVisual : MonoBehaviour
 
         int killCount = playerScore != null ? playerScore.KillCount : 0;
 
-        if (killCount == appliedKillCount)
+        if (killCount == appliedKillCount &&
+            Mathf.Approximately(
+                temporaryScaleMultiplier,
+                appliedTemporaryScaleMultiplier
+            ))
+        {
             return;
+        }
 
         appliedKillCount = killCount;
-        float scaleMultiplier = GetScaleMultiplier(killCount);
+        appliedTemporaryScaleMultiplier = temporaryScaleMultiplier;
+
+        float scaleMultiplier =
+            GetScaleMultiplier(killCount) * temporaryScaleMultiplier;
 
         foreach (ScaleTarget target in scaleTargets)
         {
@@ -71,6 +83,12 @@ public class NetworkKillScaleVisual : MonoBehaviour
 
             target.Transform.localScale = target.OriginalScale * scaleMultiplier;
         }
+    }
+
+    public void SetTemporaryScaleMultiplier(float multiplier)
+    {
+        temporaryScaleMultiplier = Mathf.Max(0.01f, multiplier);
+        ApplyCurrentScale();
     }
 
     private void CollectScaleTargets()
