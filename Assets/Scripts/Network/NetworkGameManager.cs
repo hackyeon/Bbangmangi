@@ -18,6 +18,7 @@ public class NetworkGameManager : MonoBehaviour
     [SerializeField, Min(0.1f)] private float botCheckInterval = 1f;
     [SerializeField, Min(0f)] private float botRespawnDelay = 2f;
     [SerializeField, Min(1f)] private float botSpawnRadius = 8f;
+    [SerializeField, Min(0f)] private float spawnEdgePadding = 1.5f;
     [SerializeField]
     private string[] botNames =
     {
@@ -36,11 +37,15 @@ public class NetworkGameManager : MonoBehaviour
     private NetworkRunner runner;
     private readonly Dictionary<PlayerRef, NetworkObject> spawnedPlayers = new();
     private readonly List<NetworkObject> spawnedBots = new();
-    private readonly HashSet<string> reservedBotNames = new();
+    private readonly HashSet<string> reservedBotNames = new(
+        System.StringComparer.OrdinalIgnoreCase
+    );
     private int nextJoinOrder = 1;
     private int pendingBotRespawns;
     private int botPopulationGeneration;
     private float nextBotCheckTime;
+    private bool hasWarnedMissingPlayerPrefab;
+    private bool hasWarnedMissingItemEffect;
 
     private void Awake()
     {
@@ -74,6 +79,7 @@ public class NetworkGameManager : MonoBehaviour
         runner = networkRunner;
         botPopulationGeneration++;
         pendingBotRespawns = 0;
+        ValidatePlayerPrefab();
         RebuildSpawnedPlayers(networkRunner);
     }
 
@@ -84,17 +90,26 @@ public class NetworkGameManager : MonoBehaviour
         spawnedBots.Clear();
         reservedBotNames.Clear();
 
+        HashSet<NetworkObject> duplicatePlayerObjects = new();
+
         NetworkPlayerStats[] players =
             FindObjectsByType<NetworkPlayerStats>(FindObjectsSortMode.None);
 
         foreach (NetworkPlayerStats player in players)
         {
-            if (player == null || player.Object == null || !player.Object.IsValid)
+            if (player == null ||
+                player.Object == null ||
+                !player.Object.IsValid ||
+                player.Runner != networkRunner)
+            {
                 continue;
+            }
 
             if (player.IsBot)
             {
-                spawnedBots.Add(player.Object);
+                if (!spawnedBots.Contains(player.Object))
+                    spawnedBots.Add(player.Object);
+
                 ReserveExistingBotName(player.Object);
                 EnsureBotController(player.Object);
                 continue;
@@ -102,8 +117,38 @@ public class NetworkGameManager : MonoBehaviour
 
             PlayerRef inputAuthority = player.Object.InputAuthority;
 
-            if (inputAuthority != PlayerRef.None)
+            if (inputAuthority == PlayerRef.None)
+                continue;
+
+            if (!spawnedPlayers.TryGetValue(
+                    inputAuthority,
+                    out NetworkObject existingObject))
+            {
                 spawnedPlayers[inputAuthority] = player.Object;
+                continue;
+            }
+
+            NetworkObject objectToKeep =
+                existingObject.Id.CompareTo(player.Object.Id) <= 0
+                    ? existingObject
+                    : player.Object;
+
+            NetworkObject duplicateObject =
+                objectToKeep == existingObject
+                    ? player.Object
+                    : existingObject;
+
+            spawnedPlayers[inputAuthority] = objectToKeep;
+            duplicatePlayerObjects.Add(duplicateObject);
+        }
+
+        if (networkRunner != null && networkRunner.IsServer)
+        {
+            foreach (NetworkObject duplicateObject in duplicatePlayerObjects)
+            {
+                if (duplicateObject != null && duplicateObject.IsValid)
+                    networkRunner.Despawn(duplicateObject);
+            }
         }
     }
 
@@ -119,8 +164,13 @@ public class NetworkGameManager : MonoBehaviour
 
         foreach (NetworkPlayerCommand command in commands)
         {
-            if (command == null || command.Object == null)
+            if (command == null ||
+                command.Object == null ||
+                !command.Object.IsValid ||
+                command.Runner != runner)
+            {
                 continue;
+            }
 
             maxJoinOrder = Mathf.Max(maxJoinOrder, command.JoinOrder);
         }
@@ -165,7 +215,9 @@ public class NetworkGameManager : MonoBehaviour
         if (!CanManageNetworkState() ||
             playerCommand == null ||
             playerCommand.Object == null ||
-            !playerCommand.Object.IsValid)
+            !playerCommand.Object.IsValid ||
+            playerCommand.Runner != runner ||
+            !playerCommand.HasStateAuthority)
         {
             return;
         }
@@ -188,10 +240,27 @@ public class NetworkGameManager : MonoBehaviour
 
         PlayerRef player = playerCommand.Object.InputAuthority;
 
+        NetworkObject existingPlayer = FindPlayerObject(player);
+
         if (roundManager.Phase == RoundPhase.Playing &&
-            FindPlayerObject(player) != null)
+            existingPlayer != null &&
+            IsSameConnection(existingPlayer, connectionId))
         {
             return;
+        }
+
+        if (roundManager.Phase == RoundPhase.Playing &&
+            existingPlayer != null)
+        {
+            bool removedKing = IsKing(existingPlayer);
+
+            if (existingPlayer.IsValid)
+                runner.Despawn(existingPlayer);
+
+            spawnedPlayers.Remove(player);
+
+            if (removedKing)
+                roundManager.RecalculateKing();
         }
 
         if (IsNicknameUsedByAnotherPlayer(nickname, playerCommand))
@@ -239,7 +308,9 @@ public class NetworkGameManager : MonoBehaviour
             victimObject.GetComponent<NetworkCharacterItemEffect>();
 
         itemEffect?.ResetTemporaryEffects();
-        knockbackReceiver?.ClearLastAttacker();
+
+        if (TryRespawnCharacter(victimObject, knockbackReceiver))
+            return;
 
         NetworkPlayerStats victimStats =
             victimObject.GetComponent<NetworkPlayerStats>();
@@ -260,6 +331,26 @@ public class NetworkGameManager : MonoBehaviour
             if (removedKing)
                 NetworkRoundManager.Instance?.RecalculateKing();
         }
+    }
+
+    private bool TryRespawnCharacter(
+        NetworkObject characterObject,
+        KnockbackReceiver knockbackReceiver
+    )
+    {
+        NetworkPlayerMotor motor =
+            characterObject.GetComponent<NetworkPlayerMotor>();
+
+        if (motor == null)
+            return false;
+
+        knockbackReceiver?.ResetForRespawn();
+
+        BatAttack attack = characterObject.GetComponent<BatAttack>();
+        attack?.ResetForRespawn();
+
+        motor.RespawnAt(GetSpawnPosition(), Quaternion.identity);
+        return true;
     }
 
     public void DespawnPlayer(PlayerRef player)
@@ -292,15 +383,29 @@ public class NetworkGameManager : MonoBehaviour
             return;
         }
 
+        if (playerPrefab == null)
+        {
+            WarnMissingPlayerPrefab();
+            return;
+        }
+
         if (spawnedPlayers.TryGetValue(player, out NetworkObject existingPlayer))
         {
             if (existingPlayer != null && existingPlayer.IsValid)
-                return;
+            {
+                if (IsSameConnection(existingPlayer, connectionId))
+                    return;
+
+                runner.Despawn(existingPlayer);
+            }
 
             spawnedPlayers.Remove(player);
         }
 
-        NetworkObject restoredPlayer = FindPlayerObject(player);
+        NetworkObject restoredPlayer = FindPlayerObject(
+            player,
+            connectionId
+        );
 
         if (restoredPlayer != null && restoredPlayer.IsValid)
         {
@@ -329,8 +434,13 @@ public class NetworkGameManager : MonoBehaviour
 
         foreach (NetworkPlayerCommand playerCommand in playerCommands)
         {
-            if (playerCommand == null || playerCommand.Object == null)
+            if (playerCommand == null ||
+                playerCommand.Object == null ||
+                !playerCommand.Object.IsValid ||
+                playerCommand.Runner != runner)
+            {
                 continue;
+            }
 
             playerCommand.ResetCharacterSelection();
         }
@@ -345,7 +455,8 @@ public class NetworkGameManager : MonoBehaviour
         {
             if (playerCommand == null ||
                 playerCommand.Object == null ||
-                !playerCommand.Object.IsValid)
+                !playerCommand.Object.IsValid ||
+                playerCommand.Runner != runner)
             {
                 continue;
             }
@@ -410,6 +521,7 @@ public class NetworkGameManager : MonoBehaviour
             if (stats == null ||
                 stats.Object == null ||
                 !stats.Object.IsValid ||
+                stats.Runner != runner ||
                 stats.IsBot)
             {
                 continue;
@@ -450,6 +562,8 @@ public class NetworkGameManager : MonoBehaviour
         CleanupBotList();
 
         int desiredBotCount = GetDesiredBotCount();
+        TrimExcessBots(desiredBotCount);
+
         int expectedBotCount = spawnedBots.Count + pendingBotRespawns;
 
         while (expectedBotCount < desiredBotCount)
@@ -464,7 +578,10 @@ public class NetworkGameManager : MonoBehaviour
     private bool SpawnBot()
     {
         if (playerPrefab == null)
+        {
+            WarnMissingPlayerPrefab();
             return false;
+        }
 
         CharacterData character = GetRandomCharacter();
 
@@ -622,14 +739,18 @@ public class NetworkGameManager : MonoBehaviour
         return score != null && score.IsKing;
     }
 
-    private NetworkObject FindPlayerObject(PlayerRef player)
+    private NetworkObject FindPlayerObject(
+        PlayerRef player,
+        string expectedConnectionId = null
+    )
     {
         if (player == PlayerRef.None)
             return null;
 
         if (spawnedPlayers.TryGetValue(player, out NetworkObject playerObject) &&
             playerObject != null &&
-            playerObject.IsValid)
+            playerObject.IsValid &&
+            IsSameConnection(playerObject, expectedConnectionId))
         {
             return playerObject;
         }
@@ -639,14 +760,44 @@ public class NetworkGameManager : MonoBehaviour
 
         foreach (NetworkPlayerStats playerStats in players)
         {
-            if (playerStats == null || playerStats.Object == null)
+            if (playerStats == null ||
+                playerStats.Object == null ||
+                !playerStats.Object.IsValid ||
+                playerStats.Runner != runner ||
+                playerStats.IsBot)
+            {
                 continue;
+            }
 
-            if (playerStats.Object.InputAuthority == player)
+            if (playerStats.Object.InputAuthority == player &&
+                IsSameConnection(playerStats.Object, expectedConnectionId))
+            {
                 return playerStats.Object;
+            }
         }
 
         return null;
+    }
+
+    private static bool IsSameConnection(
+        NetworkObject playerObject,
+        string expectedConnectionId
+    )
+    {
+        if (string.IsNullOrEmpty(expectedConnectionId))
+            return true;
+
+        NetworkPlayerStats playerStats =
+            playerObject != null
+                ? playerObject.GetComponent<NetworkPlayerStats>()
+                : null;
+
+        string existingConnectionId = playerStats != null
+            ? playerStats.ConnectionId.ToString()
+            : "";
+
+        return string.IsNullOrEmpty(existingConnectionId) ||
+               existingConnectionId == expectedConnectionId;
     }
 
     private bool IsValidAttacker(
@@ -698,6 +849,66 @@ public class NetworkGameManager : MonoBehaviour
                 spawnedBots.RemoveAt(i);
             }
         }
+    }
+
+    private void TrimExcessBots(int desiredBotCount)
+    {
+        desiredBotCount = Mathf.Max(0, desiredBotCount);
+        bool removedKing = false;
+
+        while (spawnedBots.Count > desiredBotCount)
+        {
+            int removeIndex = FindBotRemovalIndex();
+            NetworkObject botObject = spawnedBots[removeIndex];
+
+            removedKing |= IsKing(botObject);
+            ReleaseBotName(botObject);
+            spawnedBots.RemoveAt(removeIndex);
+
+            if (botObject != null && botObject.IsValid)
+                runner.Despawn(botObject);
+        }
+
+        if (removedKing)
+            NetworkRoundManager.Instance?.RecalculateKing();
+    }
+
+    private int FindBotRemovalIndex()
+    {
+        int fallbackIndex = spawnedBots.Count - 1;
+        int lowestRankedNonKingIndex = -1;
+        NetworkPlayerScore lowestRankedNonKingScore = null;
+
+        for (int index = 0; index < spawnedBots.Count; index++)
+        {
+            NetworkObject botObject = spawnedBots[index];
+
+            if (botObject == null || !botObject.IsValid)
+                return index;
+
+            NetworkPlayerScore botScore =
+                botObject.GetComponent<NetworkPlayerScore>();
+
+            if (botScore == null)
+                return index;
+
+            if (botScore.IsKing)
+                continue;
+
+            if (lowestRankedNonKingScore == null ||
+                NetworkRoundManager.ComparePlayerScores(
+                    botScore,
+                    lowestRankedNonKingScore
+                ) > 0)
+            {
+                lowestRankedNonKingIndex = index;
+                lowestRankedNonKingScore = botScore;
+            }
+        }
+
+        return lowestRankedNonKingIndex >= 0
+            ? lowestRankedNonKingIndex
+            : fallbackIndex;
     }
 
     private int GetDesiredBotCount()
@@ -865,8 +1076,19 @@ public class NetworkGameManager : MonoBehaviour
 
         string nickname = playerName.Nickname.ToString();
 
-        if (!string.IsNullOrWhiteSpace(nickname))
-            reservedBotNames.Add(nickname.Trim());
+        if (string.IsNullOrWhiteSpace(nickname))
+            return;
+
+        nickname = nickname.Trim();
+
+        if (reservedBotNames.Add(nickname) ||
+            runner == null ||
+            !runner.IsServer)
+        {
+            return;
+        }
+
+        playerName.SetNickname(GetBotName());
     }
 
     private void ReleaseBotName(NetworkObject botObject)
@@ -896,11 +1118,21 @@ public class NetworkGameManager : MonoBehaviour
 
         foreach (NetworkPlayerName player in players)
         {
-            if (player == null)
+            if (player == null ||
+                player.Object == null ||
+                !player.Object.IsValid ||
+                player.Runner != runner)
+            {
                 continue;
+            }
 
-            if (player.Nickname.ToString() == nickname)
+            if (string.Equals(
+                    player.Nickname.ToString(),
+                    nickname,
+                    System.StringComparison.OrdinalIgnoreCase))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -918,6 +1150,9 @@ public class NetworkGameManager : MonoBehaviour
         {
             if (playerCommand == null ||
                 playerCommand == requestingCommand ||
+                playerCommand.Object == null ||
+                !playerCommand.Object.IsValid ||
+                playerCommand.Runner != runner ||
                 !playerCommand.HasSelectedCharacter)
             {
                 continue;
@@ -937,8 +1172,13 @@ public class NetworkGameManager : MonoBehaviour
 
         foreach (NetworkPlayerName playerName in playerNames)
         {
-            if (playerName == null || playerName.Object == null)
+            if (playerName == null ||
+                playerName.Object == null ||
+                !playerName.Object.IsValid ||
+                playerName.Runner != runner)
+            {
                 continue;
+            }
 
             if (requestingCommand != null &&
                 playerName.Object.InputAuthority ==
@@ -961,6 +1201,20 @@ public class NetworkGameManager : MonoBehaviour
 
     private Vector3 GetSpawnPosition()
     {
+        MapShrinkController mapShrinkController =
+            MapShrinkController.Instance;
+
+        if (mapShrinkController != null &&
+            mapShrinkController.TryGetRandomSpawnPosition(
+                botSpawnRadius,
+                spawnHeight,
+                spawnEdgePadding,
+                out Vector3 safeSpawnPosition
+            ))
+        {
+            return safeSpawnPosition;
+        }
+
         Vector2 randomPoint = Random.insideUnitCircle * botSpawnRadius;
         return new Vector3(randomPoint.x, spawnHeight, randomPoint.y);
     }
@@ -976,5 +1230,36 @@ public class NetworkGameManager : MonoBehaviour
         return runner != null &&
                runner.IsRunning &&
                runner.IsServer;
+    }
+
+    private void ValidatePlayerPrefab()
+    {
+        if (playerPrefab == null)
+        {
+            WarnMissingPlayerPrefab();
+            return;
+        }
+
+        if (hasWarnedMissingItemEffect ||
+            playerPrefab.GetComponent<NetworkCharacterItemEffect>() != null)
+        {
+            return;
+        }
+
+        hasWarnedMissingItemEffect = true;
+        Debug.LogWarning(
+            "[Item] Player Prefab에 NetworkCharacterItemEffect가 없습니다. " +
+            "GiantHammer, Shield, Bomb 효과를 사용할 수 없습니다.",
+            playerPrefab
+        );
+    }
+
+    private void WarnMissingPlayerPrefab()
+    {
+        if (hasWarnedMissingPlayerPrefab)
+            return;
+
+        hasWarnedMissingPlayerPrefab = true;
+        Debug.LogError("NetworkGameManager Player Prefab이 연결되지 않았습니다.");
     }
 }

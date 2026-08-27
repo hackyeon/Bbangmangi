@@ -88,6 +88,18 @@ public class KnockbackReceiver : NetworkBehaviour
         LastAttacker = PlayerRef.None;
         LastAttackerObjectId = default;
         lastAttackerObject = null;
+        lastHitTime = -999f;
+    }
+
+    public void ResetForRespawn()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        KnockbackVelocity = Vector3.zero;
+        StunTimer = TickTimer.None;
+        isStunned = false;
+        ClearLastAttacker();
     }
 
     private NetworkObject ResolveLastAttackerObject()

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Fusion;
 using TMPro;
@@ -18,11 +17,17 @@ public class RankingUI : MonoBehaviour
     public TMP_Text resultMyRankText;
     public TMP_Text resultRemainingText;
 
+    [SerializeField, Min(0.05f)]
+    private float liveRefreshInterval = 0.2f;
+
     private NetworkRunner runner;
     private RoundPhase displayedPhase = (RoundPhase)(-1);
     private int displayedResultRound = -1;
     private int displayedResultCount = -1;
     private int previousDisplayedResultSecond = -1;
+    private float nextLiveRefreshTime;
+    private readonly List<NetworkPlayerScore> liveRanking = new();
+    private readonly StringBuilder liveRankingBuilder = new();
 
     private void Start()
     {
@@ -37,8 +42,8 @@ public class RankingUI : MonoBehaviour
         if (roundManager == null)
             return;
 
-        if (runner == null)
-            runner = FindFirstObjectByType<NetworkRunner>();
+        if (runner != roundManager.Runner)
+            runner = roundManager.Runner;
 
         if (displayedPhase != roundManager.Phase)
             ApplyPhaseVisibility(roundManager.Phase);
@@ -70,6 +75,9 @@ public class RankingUI : MonoBehaviour
             displayedResultCount = -1;
             previousDisplayedResultSecond = -1;
         }
+
+        if (phase == RoundPhase.Playing)
+            nextLiveRefreshTime = 0f;
     }
 
     private void UpdateLiveRanking()
@@ -77,32 +85,57 @@ public class RankingUI : MonoBehaviour
         if (rankingText == null)
             return;
 
+        if (Time.unscaledTime < nextLiveRefreshTime)
+            return;
+
+        nextLiveRefreshTime = Time.unscaledTime + liveRefreshInterval;
+
         NetworkPlayerScore[] players =
             FindObjectsByType<NetworkPlayerScore>(FindObjectsSortMode.None);
 
-        List<NetworkPlayerScore> ranking =
-            players
-                .Where(IsValidPlayer)
-                .ToList();
+        liveRanking.Clear();
 
-        ranking.Sort(NetworkRoundManager.ComparePlayerScores);
+        foreach (NetworkPlayerScore player in players)
+        {
+            if (IsValidPlayer(player))
+                liveRanking.Add(player);
+        }
 
-        int localPlayerIndex = ranking.FindIndex(IsLocalPlayer);
-        StringBuilder rankingBuilder = new();
-        int topCount = Mathf.Min(5, ranking.Count);
+        liveRanking.Sort(NetworkRoundManager.ComparePlayerScores);
+
+        int localPlayerIndex = -1;
+
+        for (int index = 0; index < liveRanking.Count; index++)
+        {
+            if (!IsLocalPlayer(liveRanking[index]))
+                continue;
+
+            localPlayerIndex = index;
+            break;
+        }
+
+        liveRankingBuilder.Clear();
+        int topCount = Mathf.Min(5, liveRanking.Count);
 
         for (int index = 0; index < topCount; index++)
-            rankingBuilder.Append(BuildLiveLine(index, ranking[index]));
-
-        if (localPlayerIndex >= 5)
         {
-            rankingBuilder.Append("...\n");
-            rankingBuilder.Append(
-                BuildLiveLine(localPlayerIndex, ranking[localPlayerIndex])
+            liveRankingBuilder.Append(
+                BuildLiveLine(index, liveRanking[index])
             );
         }
 
-        string rankingString = rankingBuilder.ToString();
+        if (localPlayerIndex >= 5)
+        {
+            liveRankingBuilder.Append("...\n");
+            liveRankingBuilder.Append(
+                BuildLiveLine(
+                    localPlayerIndex,
+                    liveRanking[localPlayerIndex]
+                )
+            );
+        }
+
+        string rankingString = liveRankingBuilder.ToString();
 
         if (rankingText.text != rankingString)
             rankingText.text = rankingString;
@@ -222,11 +255,12 @@ public class RankingUI : MonoBehaviour
         return runner != null && entry.Player == runner.LocalPlayer;
     }
 
-    private static bool IsValidPlayer(NetworkPlayerScore player)
+    private bool IsValidPlayer(NetworkPlayerScore player)
     {
         return player != null &&
                player.Object != null &&
-               player.Object.IsValid;
+               player.Object.IsValid &&
+               (runner == null || player.Runner == runner);
     }
 
     private static bool IsBot(NetworkPlayerScore player)

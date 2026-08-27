@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Fusion;
 using UnityEngine;
 
@@ -18,6 +19,8 @@ public class NetworkPlayerMotor : NetworkBehaviour
     private Vector2 botMoveInput;
     private Vector3 botLookDirection;
     private bool botAttackPressed;
+    private readonly Collider[] overlapBuffer = new Collider[64];
+    private readonly HashSet<NetworkPlayerMotor> overlapPlayers = new();
 
     public override void Spawned()
     {
@@ -161,27 +164,58 @@ public class NetworkPlayerMotor : NetworkBehaviour
         botAttackPressed |= attackPressed;
         botLookDirection = lookDirection;
     }
+
+    public void RespawnAt(Vector3 position, Quaternion rotation)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        verticalVelocity = 0f;
+        botMoveInput = Vector2.zero;
+        botLookDirection = Vector3.zero;
+        botAttackPressed = false;
+        CurrentMoveInput = Vector2.zero;
+        IsGrounded = false;
+
+        NetworkTransform networkTransform = GetComponent<NetworkTransform>();
+
+        if (networkTransform != null)
+            networkTransform.Teleport(position, rotation);
+        else
+            transform.SetPositionAndRotation(position, rotation);
+    }
     
     private void ResolvePlayerOverlap()
     {
-        Collider[] hits =
-            Physics.OverlapSphere(
-                transform.position,
-                playerRadius,
-                ~0,
-                QueryTriggerInteraction.Ignore
-            );
+        overlapPlayers.Clear();
 
-        foreach (Collider hit in hits)
+        int hitCount = Physics.OverlapSphereNonAlloc(
+            transform.position,
+            playerRadius,
+            overlapBuffer,
+            ~0,
+            QueryTriggerInteraction.Ignore
+        );
+
+        for (int hitIndex = 0; hitIndex < hitCount; hitIndex++)
         {
+            Collider hit = overlapBuffer[hitIndex];
+
+            if (hit == null)
+                continue;
+
             if (hit.gameObject == gameObject)
                 continue;
 
             NetworkPlayerMotor other =
                 hit.GetComponentInParent<NetworkPlayerMotor>();
 
-            if (other == null || other == this)
+            if (other == null ||
+                other == this ||
+                !overlapPlayers.Add(other))
+            {
                 continue;
+            }
 
             Vector3 dir =
                 transform.position -

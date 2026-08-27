@@ -57,6 +57,16 @@ public class NetworkRoundManager : NetworkBehaviour
     {
         Instance = this;
         itemSpawner = GetComponent<NetworkItemSpawner>();
+
+        if (HasStateAuthority && itemSpawner == null)
+        {
+            Debug.LogWarning(
+                "[Item] Round Manager Prefab에 NetworkItemSpawner가 없습니다.",
+                this
+            );
+        }
+
+        MapShrinkController.RefreshActive(this);
         RefreshLocalPresentation();
     }
 
@@ -148,7 +158,7 @@ public class NetworkRoundManager : NetworkBehaviour
         if (!HasStateAuthority || Phase != RoundPhase.Playing)
             return;
 
-        List<NetworkPlayerScore> scores = GetValidPlayerScores();
+        List<NetworkPlayerScore> scores = GetValidPlayerScores(Runner);
 
         if (scores.Count == 0)
             return;
@@ -204,6 +214,7 @@ public class NetworkRoundManager : NetworkBehaviour
 
     public void ValidateStateAfterMigration()
     {
+        MapShrinkController.RefreshActive(this);
         RecalculateKing();
         GetItemSpawner()?.ValidateAfterHostMigration();
     }
@@ -311,7 +322,8 @@ public class NetworkRoundManager : NetworkBehaviour
         {
             if (playerScore == null ||
                 playerScore.Object == null ||
-                !playerScore.Object.IsValid)
+                !playerScore.Object.IsValid ||
+                playerScore.Runner != Runner)
             {
                 continue;
             }
@@ -416,7 +428,9 @@ public class NetworkRoundManager : NetworkBehaviour
         );
     }
 
-    private static List<NetworkPlayerScore> GetValidPlayerScores()
+    private static List<NetworkPlayerScore> GetValidPlayerScores(
+        NetworkRunner targetRunner = null
+    )
     {
         NetworkPlayerScore[] foundScores =
             FindObjectsByType<NetworkPlayerScore>(FindObjectsSortMode.None);
@@ -427,7 +441,8 @@ public class NetworkRoundManager : NetworkBehaviour
         {
             if (score == null ||
                 score.Object == null ||
-                !score.Object.IsValid)
+                !score.Object.IsValid ||
+                (targetRunner != null && score.Runner != targetRunner))
             {
                 continue;
             }
@@ -459,14 +474,15 @@ public class NetworkRoundManager : NetworkBehaviour
         return playerName != null ? playerName.Nickname.ToString() : "";
     }
 
-    private static void ResetAllRoundData()
+    private void ResetAllRoundData()
     {
-        foreach (NetworkPlayerScore score in GetValidPlayerScores())
+        foreach (NetworkPlayerScore score in GetValidPlayerScores(Runner))
             score.ResetRoundData();
     }
 
     private void NotifyRoundPhaseStarted()
     {
+        MapShrinkController.RefreshActive(this);
         NetworkGameManager.Instance?.HandleRoundPhaseStarted(Phase);
         GetItemSpawner()?.HandleRoundPhaseStarted(Phase);
     }

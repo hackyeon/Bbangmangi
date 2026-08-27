@@ -87,9 +87,11 @@ public class NetworkBotAI : MonoBehaviour
     private void Wander(float deltaTime)
     {
         Vector3 position = transform.position;
-        Vector3 fromCenter = new Vector3(position.x, 0f, position.z);
+        Vector3 mapCenter = GetMapCenter();
+        Vector3 fromCenter = position - mapCenter;
+        fromCenter.y = 0f;
 
-        if (fromCenter.magnitude >= returnToCenterDistance)
+        if (fromCenter.magnitude >= GetReturnToCenterDistance())
         {
             Vector3 toCenter = -fromCenter.normalized;
             motor.SetBotInput(
@@ -193,6 +195,9 @@ public class NetworkBotAI : MonoBehaviour
         if (!candidate.Object.IsValid)
             return false;
 
+        if (networkObject == null || candidate.Runner != networkObject.Runner)
+            return false;
+
         if (candidate.Object == networkObject)
             return false;
 
@@ -276,8 +281,8 @@ public class NetworkBotAI : MonoBehaviour
         if (TryGetSafeMoveInput(-blockedDirection, out Vector2 fallbackInput))
             return fallbackInput;
 
-        Vector3 position = transform.position;
-        Vector3 toCenter = new Vector3(-position.x, 0f, -position.z);
+        Vector3 toCenter = GetMapCenter() - transform.position;
+        toCenter.y = 0f;
 
         if (TryGetSafeMoveInput(toCenter, out fallbackInput))
             return fallbackInput;
@@ -289,6 +294,36 @@ public class NetworkBotAI : MonoBehaviour
             return fallbackInput;
 
         return Vector2.zero;
+    }
+
+    private Vector3 GetMapCenter()
+    {
+        MapShrinkController mapShrinkController =
+            MapShrinkController.Instance;
+
+        if (mapShrinkController != null)
+            return mapShrinkController.PlayAreaCenter;
+
+        return Vector3.zero;
+    }
+
+    private float GetReturnToCenterDistance()
+    {
+        MapShrinkController mapShrinkController =
+            MapShrinkController.Instance;
+
+        if (mapShrinkController == null)
+            return returnToCenterDistance;
+
+        float currentSafeRadius =
+            mapShrinkController.GetSafeHorizontalRadius(
+                ledgeLookAheadDistance
+            );
+
+        if (currentSafeRadius <= 0.01f)
+            return returnToCenterDistance;
+
+        return Mathf.Min(returnToCenterDistance, currentSafeRadius);
     }
 
     private bool TryGetSafeMoveInput(Vector3 direction, out Vector2 moveInput)

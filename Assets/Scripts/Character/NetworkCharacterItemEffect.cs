@@ -34,6 +34,7 @@ public class NetworkCharacterItemEffect : NetworkBehaviour
     public NetworkBool IsShieldActive { get; private set; }
 
     private readonly HashSet<KnockbackReceiver> bombTargets = new();
+    private readonly Collider[] bombHitBuffer = new Collider[128];
 
     private NetworkPlayerStats playerStats;
     private BatAttack batAttack;
@@ -144,15 +145,21 @@ public class NetworkCharacterItemEffect : NetworkBehaviour
         CacheComponents();
         bombTargets.Clear();
 
-        Collider[] hits = Physics.OverlapSphere(
+        int hitCount = Physics.OverlapSphereNonAlloc(
             transform.position,
             bombRadius,
+            bombHitBuffer,
             bombTargetLayers,
             QueryTriggerInteraction.Ignore
         );
 
-        foreach (Collider hit in hits)
+        for (int hitIndex = 0; hitIndex < hitCount; hitIndex++)
         {
+            Collider hit = bombHitBuffer[hitIndex];
+
+            if (hit == null)
+                continue;
+
             KnockbackReceiver receiver =
                 hit.GetComponentInParent<KnockbackReceiver>();
 

@@ -46,7 +46,12 @@ public class CharacterSelectUI : MonoBehaviour
 
         selectedCharacter = null;
 
-        Show();
+        NetworkRoundManager roundManager = NetworkRoundManager.Instance;
+
+        if (roundManager != null)
+            roundManager.RefreshLocalPresentation();
+        else
+            Show();
     }
 
     private void CreateCharacterButtons()
@@ -241,8 +246,14 @@ public class CharacterSelectUI : MonoBehaviour
 
         foreach (NetworkPlayerName player in players)
         {
-            if (player == null)
+            if (player == null ||
+                player.Object == null ||
+                !player.Object.IsValid ||
+                (NetworkRoundManager.Instance != null &&
+                 player.Runner != NetworkRoundManager.Instance.Runner))
+            {
                 continue;
+            }
 
             string existingName = player.Nickname.ToString();
 
@@ -264,6 +275,10 @@ public class CharacterSelectUI : MonoBehaviour
         foreach (NetworkPlayerCommand playerCommand in playerCommands)
         {
             if (playerCommand == null ||
+                playerCommand.Object == null ||
+                !playerCommand.Object.IsValid ||
+                (NetworkRoundManager.Instance != null &&
+                 playerCommand.Runner != NetworkRoundManager.Instance.Runner) ||
                 playerCommand.HasInputAuthority ||
                 !playerCommand.HasSelectedCharacter)
             {

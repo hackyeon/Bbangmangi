@@ -21,6 +21,7 @@ public class BatAttack : NetworkBehaviour
     [Networked] private Vector3 PendingAttackDirection { get; set; }
 
     private readonly HashSet<KnockbackReceiver> hitReceivers = new();
+    private readonly Collider[] hitBuffer = new Collider[128];
 
     public override void FixedUpdateNetwork()
     {
@@ -70,6 +71,18 @@ public class BatAttack : NetworkBehaviour
             playerAnimation.PlayAttack();
     }
 
+    public void ResetForRespawn()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        AttackCooldownTimer = TickTimer.None;
+        HitDelayTimer = TickTimer.None;
+        HasPendingHit = false;
+        PendingAttackDirection = Vector3.zero;
+        hitReceivers.Clear();
+    }
+
     private void Hit(Vector3 attackDirection)
     {
         if (!HasStateAuthority)
@@ -80,15 +93,21 @@ public class BatAttack : NetworkBehaviour
         Vector3 attackPoint =
             transform.position + attackDirection * attackOffset;
 
-        Collider[] hits = Physics.OverlapSphere(
+        int hitCount = Physics.OverlapSphereNonAlloc(
             attackPoint,
             attackRange,
+            hitBuffer,
             hitLayers,
             QueryTriggerInteraction.Ignore
         );
 
-        foreach (Collider hit in hits)
+        for (int hitIndex = 0; hitIndex < hitCount; hitIndex++)
         {
+            Collider hit = hitBuffer[hitIndex];
+
+            if (hit == null)
+                continue;
+
             KnockbackReceiver receiver =
                 hit.GetComponentInParent<KnockbackReceiver>();
 

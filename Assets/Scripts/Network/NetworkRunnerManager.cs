@@ -88,20 +88,131 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
     private void RebuildPlayerCommands()
     {
         playerCommands.Clear();
+        localCommand = null;
+
+        HashSet<NetworkObject> duplicateCommandObjects = new();
 
         NetworkPlayerCommand[] commands =
             FindObjectsByType<NetworkPlayerCommand>(FindObjectsSortMode.None);
 
         foreach (NetworkPlayerCommand command in commands)
         {
-            if (command == null || command.Object == null)
+            if (command == null ||
+                command.Object == null ||
+                !command.Object.IsValid ||
+                command.Runner != runner)
+            {
                 continue;
+            }
 
-            playerCommands[command.Object.InputAuthority] = command.Object;
+            PlayerRef inputAuthority = command.Object.InputAuthority;
 
-            if (command.HasInputAuthority)
-                localCommand = command;
+            if (playerCommands.TryGetValue(
+                    inputAuthority,
+                    out NetworkObject existingObject))
+            {
+                NetworkObject objectToKeep = SelectCommandToKeep(
+                    existingObject,
+                    command.Object
+                );
+
+                NetworkObject duplicateObject =
+                    objectToKeep == existingObject
+                        ? command.Object
+                        : existingObject;
+
+                playerCommands[inputAuthority] = objectToKeep;
+                duplicateCommandObjects.Add(duplicateObject);
+            }
+            else
+            {
+                playerCommands[inputAuthority] = command.Object;
+            }
         }
+
+        if (runner != null && runner.IsServer)
+        {
+            foreach (NetworkObject duplicateObject in duplicateCommandObjects)
+            {
+                if (duplicateObject != null && duplicateObject.IsValid)
+                    runner.Despawn(duplicateObject);
+            }
+        }
+
+        foreach (NetworkObject commandObject in playerCommands.Values)
+        {
+            NetworkPlayerCommand command =
+                commandObject.GetComponent<NetworkPlayerCommand>();
+
+            if (command != null && command.HasInputAuthority)
+            {
+                localCommand = command;
+                break;
+            }
+        }
+    }
+
+    private static NetworkObject SelectCommandToKeep(
+        NetworkObject firstObject,
+        NetworkObject secondObject
+    )
+    {
+        NetworkPlayerCommand firstCommand =
+            firstObject.GetComponent<NetworkPlayerCommand>();
+
+        NetworkPlayerCommand secondCommand =
+            secondObject.GetComponent<NetworkPlayerCommand>();
+
+        int firstPriority = GetCommandStatePriority(firstCommand);
+        int secondPriority = GetCommandStatePriority(secondCommand);
+
+        if (firstPriority != secondPriority)
+            return firstPriority > secondPriority ? firstObject : secondObject;
+
+        int firstJoinOrder = firstCommand != null
+            ? firstCommand.JoinOrder
+            : 0;
+
+        int secondJoinOrder = secondCommand != null
+            ? secondCommand.JoinOrder
+            : 0;
+
+        if (firstJoinOrder > 0 && secondJoinOrder > 0 &&
+            firstJoinOrder != secondJoinOrder)
+        {
+            return firstJoinOrder < secondJoinOrder
+                ? firstObject
+                : secondObject;
+        }
+
+        return firstObject.Id.CompareTo(secondObject.Id) <= 0
+            ? firstObject
+            : secondObject;
+    }
+
+    private static int GetCommandStatePriority(NetworkPlayerCommand command)
+    {
+        if (command == null)
+            return 0;
+
+        int priority = 0;
+
+        if (command.HasSelectedCharacter)
+            priority += 16;
+
+        if (!string.IsNullOrEmpty(command.SelectedNickname.ToString()))
+            priority += 8;
+
+        if (!string.IsNullOrEmpty(command.ConnectionId.ToString()))
+            priority += 4;
+
+        if (command.JoinOrder > 0)
+            priority += 2;
+
+        if (command.HostScore > 0)
+            priority++;
+
+        return priority;
     }
 
     public void SubmitCharacterSelection(string nickname, int characterId)
@@ -120,9 +231,45 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         if (!runner.IsServer)
             return;
 
-        if (!playerCommands.ContainsKey(player))
+        bool hasValidCommand =
+            playerCommands.TryGetValue(player, out NetworkObject commandObject) &&
+            commandObject != null &&
+            commandObject.IsValid &&
+            commandObject.Runner == runner;
+
+        string joiningConnectionId = GetConnectionId(
+            runner.GetPlayerConnectionToken(player)
+        );
+
+        if (hasValidCommand)
         {
-            NetworkObject commandObject = runner.Spawn(
+            NetworkPlayerCommand existingCommand =
+                commandObject.GetComponent<NetworkPlayerCommand>();
+
+            string existingConnectionId = existingCommand != null
+                ? existingCommand.ConnectionId.ToString()
+                : "";
+
+            if (!string.IsNullOrEmpty(existingConnectionId) &&
+                !string.IsNullOrEmpty(joiningConnectionId) &&
+                existingConnectionId != joiningConnectionId)
+            {
+                runner.Despawn(commandObject);
+                hasValidCommand = false;
+            }
+        }
+
+        if (!hasValidCommand)
+        {
+            playerCommands.Remove(player);
+
+            if (commandPrefab == null)
+            {
+                Debug.LogError("PlayerCommand Prefab이 연결되지 않았습니다.");
+                return;
+            }
+
+            commandObject = runner.Spawn(
                 commandPrefab,
                 Vector3.zero,
                 Quaternion.identity,
@@ -149,7 +296,7 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
 
         if (playerCommands.TryGetValue(player, out NetworkObject commandObject))
         {
-            if (commandObject != null)
+            if (commandObject != null && commandObject.IsValid)
                 runner.Despawn(commandObject);
 
             playerCommands.Remove(player);
@@ -458,6 +605,9 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
             if (player == null || player.Object == null)
                 continue;
 
+            if (!player.Object.IsValid || player.Runner != migrationRunner)
+                continue;
+
             if (player.IsBot)
                 continue;
 
@@ -480,6 +630,9 @@ public class NetworkRunnerManager : MonoBehaviour, INetworkRunnerCallbacks
         foreach (NetworkPlayerCommand command in commands)
         {
             if (command == null || command.Object == null)
+                continue;
+
+            if (!command.Object.IsValid || command.Runner != migrationRunner)
                 continue;
 
             PlayerRef inputAuthority = command.Object.InputAuthority;

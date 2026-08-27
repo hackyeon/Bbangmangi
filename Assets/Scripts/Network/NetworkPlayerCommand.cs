@@ -32,6 +32,9 @@ public class NetworkPlayerCommand : NetworkBehaviour
                 return;
             }
 
+            if (NetworkRunnerManager.Instance == null)
+                return;
+
             NetworkRunnerManager.Instance.SetLocalCommand(this);
             RPC_SubmitHostCandidate(
                 CalculateHostCandidateScore(),
