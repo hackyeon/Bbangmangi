@@ -236,7 +236,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: caa5ad947c6f44d0d89fd714fae6ed68, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RankingUI
+  liveRankingRoot: {fileID: 0}
   rankingText: {fileID: 1759504721}
+  resultPanel: {fileID: 0}
+  resultTitleText: {fileID: 0}
+  resultTopThreeText: {fileID: 0}
+  resultMyRankText: {fileID: 0}
+  resultRemainingText: {fileID: 0}
+  liveRefreshInterval: 0.2
 --- !u!114 &31232705
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -298,6 +305,8 @@ MonoBehaviour:
   moveJoystick: {fileID: 1381844462}
   attackJoystick: {fileID: 2014469472}
   commandPrefab: {fileID: 2195978277497058632, guid: 3a1975408b09a40dba977c2941952112,
+    type: 3}
+  roundManagerPrefab: {fileID: 84847019892122713, guid: 5187f58a30bb34005a27b325cfc973e2,
     type: 3}
   hostStallNoticeDelay: 0.7
 --- !u!4 &66244792
@@ -1792,6 +1801,23 @@ MonoBehaviour:
   playerPrefab: {fileID: -3098761820489824526, guid: 4002f9163460349efbc785ea695ea238,
     type: 3}
   spawnHeight: 20
+  targetCharacterCount: 6
+  minimumBotCount: 2
+  botCheckInterval: 1
+  botRespawnDelay: 2
+  botSpawnRadius: 8
+  spawnEdgePadding: 1.5
+  botNames:
+  - "\uB9DD\uCE58\uC655"
+  - "\uCAC4\uBCF4\uB9DD\uCE58"
+  - "\uBD84\uB178\uD55C\uBE75"
+  - "\uD55C\uBC29\uB9E8"
+  - "\uBE75\uC57C\uBE75\uC57C"
+  - "\uB3C4\uB9DD\uC790"
+  - "\uB9DE\uACE0\uB9CC\uC0B4\uC790"
+  - "\uAC70\uB300\uB9DD\uCE58"
+  - "\uBE75\uC154\uD2C0"
+  - "\uD0B9\uB9DD\uCE58"
 --- !u!4 &1668862071
 Transform:
   m_ObjectHideFlags: 0
